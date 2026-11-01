@@ -33,7 +33,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.iosphone.app.R
+import com.iosphone.app.ui.contacts.ContactsScreen
+import com.iosphone.app.ui.favorites.FavoritesScreen
 import com.iosphone.app.ui.keypad.KeypadScreen
+import com.iosphone.app.ui.recents.RecentsScreen
+import com.iosphone.app.ui.voicemail.VoicemailScreen
 import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
 
@@ -54,8 +58,11 @@ fun TabShell() {
     Column(Modifier.fillMaxSize().background(colors.background)) {
         Box(Modifier.weight(1f).statusBarsPadding()) {
             when (selected) {
+                0 -> FavoritesScreen()
+                1 -> RecentsScreen()
+                2 -> ContactsScreen()
                 3 -> KeypadScreen()
-                else -> Box(Modifier.fillMaxSize().background(colors.background))
+                else -> VoicemailScreen()
             }
         }
         Box(Modifier.fillMaxWidth().height(0.5.dp).background(colors.barSeparator))

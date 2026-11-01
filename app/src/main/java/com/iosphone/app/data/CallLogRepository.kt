@@ -1,0 +1,49 @@
+package com.iosphone.app.data
+
+import android.content.ContentResolver
+import android.content.Context
+import android.os.Bundle
+import android.provider.CallLog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+object CallLogRepository {
+    suspend fun load(context: Context): List<CallEntry> = withContext(Dispatchers.IO) {
+        val args = Bundle().apply {
+            putInt(ContentResolver.QUERY_ARG_LIMIT, 300)
+            putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(CallLog.Calls.DATE))
+            putInt(
+                ContentResolver.QUERY_ARG_SORT_DIRECTION,
+                ContentResolver.QUERY_SORT_DIRECTION_DESCENDING,
+            )
+        }
+        val out = ArrayList<CallEntry>()
+        context.contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(
+                CallLog.Calls._ID,
+                CallLog.Calls.NUMBER,
+                CallLog.Calls.CACHED_NAME,
+                CallLog.Calls.TYPE,
+                CallLog.Calls.DATE,
+                CallLog.Calls.DURATION,
+            ),
+            args,
+            null,
+        )?.use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    CallEntry(
+                        id = c.getLong(0),
+                        number = c.getString(1).orEmpty(),
+                        name = c.getString(2)?.takeIf { it.isNotBlank() },
+                        type = c.getInt(3),
+                        date = c.getLong(4),
+                        duration = c.getLong(5),
+                    ),
+                )
+            }
+        }
+        out
+    }
+}

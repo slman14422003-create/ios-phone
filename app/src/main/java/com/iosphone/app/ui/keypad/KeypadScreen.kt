@@ -43,6 +43,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.iosphone.app.ui.common.VOICEMAIL
+import com.iosphone.app.ui.common.rememberCaller
 import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
 import com.iosphone.app.util.PhoneFormat
@@ -66,6 +68,7 @@ fun KeypadScreen(modifier: Modifier = Modifier) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     var raw by remember { mutableStateOf("") }
+    val caller = rememberCaller()
 
     fun tick() {
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -121,6 +124,12 @@ fun KeypadScreen(modifier: Modifier = Modifier) {
                                     {
                                         tick()
                                         raw += "+"
+                                    }
+                                }
+                                "1" -> {
+                                    {
+                                        tick()
+                                        caller(VOICEMAIL)
                                     }
                                 }
                                 else -> null

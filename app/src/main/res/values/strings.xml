@@ -8,4 +8,22 @@
     <string name="tab_voicemail">Voicemail</string>
     <string name="delete">Delete</string>
     <string name="call">Call</string>
+    <string name="message">Message</string>
+    <string name="search">Search</string>
+    <string name="all">All</string>
+    <string name="missed">Missed</string>
+    <string name="allow_access">Allow Access</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="contacts_title">Contacts</string>
+    <string name="recents_title">Recents</string>
+    <string name="favorites_title">Favorites</string>
+    <string name="voicemail_title">Voicemail</string>
+    <string name="call_voicemail">Call Voicemail</string>
+    <string name="no_results">No Results</string>
+    <string name="no_recents">No Recent Calls</string>
+    <string name="no_favorites">No Favorites</string>
+    <string name="contacts_perm_title">Contacts Access</string>
+    <string name="contacts_perm_body">Allow Phone to access your contacts so you can see and call the people you know.</string>
+    <string name="calllog_perm_title">Call History Access</string>
+    <string name="calllog_perm_body">Allow Phone to access your call history to show your recent calls.</string>
 </resources>
