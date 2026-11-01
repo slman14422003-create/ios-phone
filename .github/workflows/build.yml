@@ -13,6 +13,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Create debug keystore
+        run: |
+          mkdir -p "$HOME/.config/.android" "$HOME/.android"
+          keytool -genkeypair -keystore "$HOME/.config/.android/debug.keystore" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          cp "$HOME/.config/.android/debug.keystore" "$HOME/.android/debug.keystore"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.11.1
