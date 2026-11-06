@@ -236,7 +236,7 @@ private fun CallsContent() {
                 )
             }
         }
-        items(groups, key = { it.first.id }) { g ->
+        items(groups, key = { it.first.id }, contentType = { "call" }) { g ->
             val contact = data.contactFor(g.first.number)
             CallRow(
                 g = g,

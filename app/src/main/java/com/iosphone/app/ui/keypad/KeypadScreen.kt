@@ -71,6 +71,7 @@ import com.iosphone.app.data.LocalAppData
 import com.iosphone.app.ui.common.PadKey
 import com.iosphone.app.domain.DialSuggest
 import com.iosphone.app.domain.Suggestion
+import com.iosphone.app.ui.common.GlassIconButton
 import com.iosphone.app.ui.common.GlassMenu
 import com.iosphone.app.ui.common.LocalNav
 import com.iosphone.app.ui.common.MenuItem
@@ -170,11 +171,12 @@ fun KeypadScreen(initialNumber: String?) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AnimatedVisibility(visible = raw.isNotEmpty(), enter = enter, exit = exit) {
-                    Image(
-                        Icons.Filled.PersonAdd,
-                        null,
-                        Modifier.size(34.dp).pressable { nav.push(Route.Editor(null, raw)) },
-                        colorFilter = ColorFilter.tint(colors.label),
+                    GlassIconButton(
+                        icon = Icons.Filled.PersonAdd,
+                        onClick = { nav.push(Route.Editor(null, raw)) },
+                        size = 48.dp,
+                        iconSize = 22.dp,
+                        tint = colors.tint,
                     )
                 }
             }

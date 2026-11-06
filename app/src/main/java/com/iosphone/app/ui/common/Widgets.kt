@@ -82,8 +82,8 @@ fun GlassSearchField(
 }
 
 @Composable
-fun Hairline(startPadding: androidx.compose.ui.unit.Dp = 16.dp) {
-    Box(Modifier.padding(start = startPadding).fillMaxWidth().height(0.5.dp).background(Ios.colors.separator))
+fun Hairline(startPadding: androidx.compose.ui.unit.Dp = 16.dp, endPadding: androidx.compose.ui.unit.Dp = 0.dp) {
+    Box(Modifier.padding(start = startPadding, end = endPadding).fillMaxWidth().height(0.5.dp).background(Ios.colors.separator))
 }
 
 @Composable

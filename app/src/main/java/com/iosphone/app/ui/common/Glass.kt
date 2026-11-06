@@ -1,6 +1,16 @@
 package com.iosphone.app.ui.common
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
@@ -31,7 +41,6 @@ import eightbitlab.com.blurview.BlurTarget
 import eightbitlab.com.blurview.BlurView
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -65,6 +74,26 @@ fun Modifier.glass(shape: Shape): Modifier = composed {
         )
         .clip(shape)
         .background(c.glass)
+        .border(0.5.dp, c.glassBorder, shape)
+}
+
+/** Counts open menus; PhoneContent blurs and dims the whole screen while it is above zero. */
+object ScreenBlur {
+    var count by mutableIntStateOf(0)
+}
+
+fun Modifier.menuSurface(shape: Shape): Modifier = composed {
+    val c = Ios.colors
+    this
+        .shadow(
+            elevation = 24.dp,
+            shape = shape,
+            clip = false,
+            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.12f),
+            spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.22f),
+        )
+        .clip(shape)
+        .background(if (c.dark) Color(0xF2262628) else Color(0xF5F7F7F9))
         .border(0.5.dp, c.glassBorder, shape)
 }
 
@@ -102,7 +131,7 @@ fun GlassBox(
             AndroidView(
                 factory = { ctx ->
                     BlurView(ctx).also { v ->
-                        v.setupWith(target, 1f, false).setBlurRadius(22f)
+                        v.setupWith(target, 2f, false).setBlurRadius(32f)
                         v.setOverlayColor(tint)
                     }
                 },
@@ -197,51 +226,67 @@ fun GlassMenu(
     offsetY: Dp = 52.dp,
     width: Dp = 250.dp,
 ) {
+    DisposableEffect(expanded) {
+        if (expanded) ScreenBlur.count++
+        onDispose { if (expanded) ScreenBlur.count-- }
+    }
     if (!expanded) return
     val colors = Ios.colors
     val density = LocalDensity.current
     val offset = with(density) { IntOffset(0, offsetY.roundToPx()) }
+    val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+    val origin = if (alignment == Alignment.BottomCenter) TransformOrigin(0.5f, 1f) else TransformOrigin(1f, 0f)
     Popup(
         alignment = alignment,
         offset = offset,
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true),
     ) {
-        Column(Modifier.width(width).glass(RoundedCornerShape(24.dp)).padding(vertical = 8.dp)) {
-            items.forEachIndexed { index, item ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(46.dp)
-                        .pressable(pressedScale = 0.98f) {
-                            onDismiss()
-                            item.onClick()
+        AnimatedVisibility(
+            visibleState = visible,
+            enter = fadeIn(tween(140)) + scaleIn(
+                animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
+                initialScale = 0.8f,
+                transformOrigin = origin,
+            ),
+            exit = fadeOut(tween(90)),
+        ) {
+            Column(Modifier.width(width).menuSurface(RoundedCornerShape(24.dp)).padding(vertical = 8.dp)) {
+                items.forEachIndexed { index, item ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .pressable(pressedScale = 0.98f) {
+                                onDismiss()
+                                item.onClick()
+                            }
+                            .padding(horizontal = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                            if (item.checked) {
+                                Image(Icons.Filled.Check, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(colors.label))
+                            }
                         }
-                        .padding(horizontal = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
-                        if (item.checked) {
-                            Image(Icons.Filled.Check, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(colors.label))
-                        }
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    BasicText(
-                        item.label,
-                        style = IosType.body.copy(color = if (item.destructive) colors.red else colors.label),
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (item.icon != null) {
-                        Image(
-                            item.icon,
-                            null,
-                            Modifier.size(20.dp),
-                            colorFilter = ColorFilter.tint(if (item.destructive) colors.red else colors.label),
+                        Spacer(Modifier.width(10.dp))
+                        BasicText(
+                            item.label,
+                            style = IosType.body.copy(color = if (item.destructive) colors.red else colors.label),
+                            modifier = Modifier.weight(1f),
                         )
+                        if (item.icon != null) {
+                            Image(
+                                item.icon,
+                                null,
+                                Modifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(if (item.destructive) colors.red else colors.label),
+                            )
+                        }
                     }
-                }
-                if (index < items.lastIndex) {
-                    Box(Modifier.padding(horizontal = 18.dp).fillMaxWidth().height(0.5.dp).background(colors.separator))
+                    if (index < items.lastIndex) {
+                        Box(Modifier.padding(horizontal = 18.dp).fillMaxWidth().height(0.5.dp).background(colors.separator))
+                    }
                 }
             }
         }

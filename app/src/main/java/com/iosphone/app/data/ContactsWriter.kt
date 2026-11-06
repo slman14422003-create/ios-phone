@@ -24,6 +24,7 @@ object ContactsWriter {
         phones: List<String>,
         emails: List<String>,
         note: String,
+        phoneLabels: List<String> = emptyList(),
     ): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val resolver = context.contentResolver
@@ -78,13 +79,16 @@ object ContactsWriter {
                         .build(),
                 )
             }
-            for (p in phones.map { it.trim() }.filter { it.isNotEmpty() }) {
-                ops.add(
-                    dataInsert(Phone.CONTENT_ITEM_TYPE)
-                        .withValue(Phone.NUMBER, p)
-                        .withValue(Phone.TYPE, Phone.TYPE_MOBILE)
-                        .build(),
-                )
+            phones.forEachIndexed { index, raw ->
+                val number = raw.trim()
+                if (number.isNotEmpty()) {
+                    ops.add(
+                        dataInsert(Phone.CONTENT_ITEM_TYPE)
+                            .withValue(Phone.NUMBER, number)
+                            .withValue(Phone.TYPE, PhoneLabels.typeOf(phoneLabels.getOrNull(index)))
+                            .build(),
+                    )
+                }
             }
             for (e in emails.map { it.trim() }.filter { it.isNotEmpty() }) {
                 ops.add(
@@ -143,5 +147,22 @@ object ContactsWriter {
             }
             context.contentResolver.insert(BlockedNumberContract.BlockedNumbers.CONTENT_URI, values) != null
         }.getOrDefault(false)
+    }
+}
+
+object PhoneLabels {
+    val all = listOf("mobile", "home", "work", "main", "other")
+
+    fun normalize(label: String?): String {
+        val l = label?.trim()?.lowercase().orEmpty()
+        return all.firstOrNull { l == it } ?: if (l.isEmpty()) "mobile" else "other"
+    }
+
+    fun typeOf(label: String?): Int = when (normalize(label)) {
+        "home" -> Phone.TYPE_HOME
+        "work" -> Phone.TYPE_WORK
+        "main" -> Phone.TYPE_MAIN
+        "other" -> Phone.TYPE_OTHER
+        else -> Phone.TYPE_MOBILE
     }
 }

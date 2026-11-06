@@ -3,10 +3,32 @@ package com.iosphone.app.ui.contacts
 import android.Manifest
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import com.iosphone.app.ui.common.glass
+import kotlin.math.exp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,31 +37,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -48,7 +65,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iosphone.app.R
@@ -63,20 +79,34 @@ import com.iosphone.app.ui.common.PermissionGate
 import com.iosphone.app.ui.common.Route
 import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
-import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 
-private val sectionComparator = Comparator<String> { a, b ->
-    when {
-        a == "#" && b != "#" -> 1
-        b == "#" && a != "#" -> -1
-        else -> a.compareTo(b)
+private const val ArabicOrder = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي"
+
+private fun normalizeLetter(c: Char): Char = when (c) {
+    'أ', 'إ', 'آ', 'ٱ' -> 'ا'
+    'ى', 'ئ' -> 'ي'
+    'ة' -> 'ه'
+    'ؤ' -> 'و'
+    else -> c
+}
+
+private fun sectionRank(section: String): Int {
+    if (section == "#") return 100000
+    val c = section[0]
+    val arabic = ArabicOrder.indexOf(c)
+    return when {
+        arabic >= 0 -> arabic
+        c.code < 0x250 -> 1000 + c.code
+        else -> 5000 + c.code
     }
 }
 
+private val sectionComparator = Comparator<String> { a, b -> sectionRank(a).compareTo(sectionRank(b)) }
+
 private fun sectionOf(name: String): String {
-    val c = name.trim().firstOrNull()?.uppercaseChar()
-    return if (c != null && c.isLetter()) c.toString() else "#"
+    val first = name.trim().firstOrNull() ?: return "#"
+    if (!first.isLetter()) return "#"
+    return normalizeLetter(first).uppercaseChar().toString()
 }
 
 @Composable
@@ -87,6 +117,8 @@ fun ContactsScreen(query: String = "") {
         stringResource(R.string.contacts_perm_body),
     ) { ContactList(query) }
 }
+
+private val IndexWidth = 30.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -110,15 +142,30 @@ private fun ContactList(query: String) {
         map
     }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
+    val showIndex = query.isBlank() && sections.size > 1
+    var activeLetter by remember { mutableStateOf<String?>(null) }
+    var lastLetter by remember { mutableStateOf("") }
+    LaunchedEffect(activeLetter) { activeLetter?.let { lastLetter = it } }
+    val blurRadius by animateDpAsState(
+        targetValue = if (activeLetter != null) 22.dp else 0.dp,
+        animationSpec = tween(260),
+        label = "indexBlur",
+    )
+    val dim by animateFloatAsState(
+        targetValue = if (activeLetter != null) 0.32f else 0f,
+        animationSpec = tween(260),
+        label = "indexDim",
+    )
 
     Box(Modifier.fillMaxSize().background(colors.background)) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius, BlurredEdgeTreatment.Unbounded) else Modifier),
             contentPadding = PaddingValues(bottom = 150.dp),
         ) {
-            item(key = "top") {
+            item(key = "top", contentType = "top") {
                 Column(Modifier.statusBarsPadding()) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Spacer(Modifier.weight(1f))
@@ -133,12 +180,14 @@ private fun ContactList(query: String) {
             }
             for ((letter, people) in sections) {
                 if (letter.isNotEmpty()) {
-                    stickyHeader(key = "h_$letter") { SectionHeader(letter) }
+                    stickyHeader(key = "h_$letter", contentType = "header") { SectionHeader(letter) }
                 }
-                items(people, key = { it.id }) { c -> ContactRow(c) { nav.push(Route.ContactDetail(c.id)) } }
+                items(people, key = { it.id }, contentType = { "contact" }) { c ->
+                    ContactRow(c, endInset = if (showIndex) IndexWidth - 4.dp else 0.dp) { nav.push(Route.ContactDetail(c.id)) }
+                }
             }
             if (filtered.isEmpty() && data.loaded) {
-                item(key = "empty") {
+                item(key = "empty", contentType = "empty") {
                     BasicText(
                         stringResource(R.string.no_results),
                         style = IosType.body.copy(color = colors.secondaryLabel, textAlign = TextAlign.Center),
@@ -147,11 +196,29 @@ private fun ContactList(query: String) {
                 }
             }
         }
-        if (query.isBlank() && sections.size > 1) {
+        if (dim > 0.001f) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
+        }
+        AnimatedVisibility(
+            visible = activeLetter != null,
+            modifier = Modifier.align(Alignment.Center),
+            enter = fadeIn(tween(160)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = 500f), initialScale = 0.6f),
+            exit = fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
+        ) {
+            BasicText(
+                lastLetter,
+                style = IosType.largeTitle.copy(color = Color.White, fontSize = 110.sp, fontWeight = FontWeight.Bold),
+            )
+        }
+        if (showIndex) {
             SideIndex(
                 letters = sections.keys.toList(),
-                onSelect = { l -> indexMap[l]?.let { scope.launch { listState.scrollToItem(it) } } },
-                modifier = Modifier.align(Alignment.CenterEnd),
+                onSelect = { l -> indexMap[l]?.let { listState.requestScrollToItem(it) } },
+                onActive = { activeLetter = it },
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .statusBarsPadding()
+                    .padding(top = 112.dp, bottom = 150.dp),
             )
         }
     }
@@ -172,7 +239,7 @@ private fun SectionHeader(letter: String) {
 }
 
 @Composable
-fun ContactRow(c: Contact, onClick: () -> Unit) {
+fun ContactRow(c: Contact, endInset: Dp = 0.dp, onClick: () -> Unit) {
     val colors = Ios.colors
     val text = remember(c.name, c.given, c.family) {
         buildAnnotatedString {
@@ -204,70 +271,110 @@ fun ContactRow(c: Contact, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Hairline(66.dp)
+        Hairline(66.dp, endInset)
     }
 }
 
 @Composable
-private fun SideIndex(letters: List<String>, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun SideIndex(
+    letters: List<String>,
+    onSelect: (String) -> Unit,
+    onActive: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = Ios.colors
     val view = LocalView.current
-    var heightPx by remember { mutableIntStateOf(1) }
-    var current by remember { mutableStateOf<String?>(null) }
+    val density = LocalDensity.current
+    val currentLetters by rememberUpdatedState(letters)
+    val currentSelect by rememberUpdatedState(onSelect)
+    val currentActive by rememberUpdatedState(onActive)
     var fingerY by remember { mutableFloatStateOf(0f) }
+    var active by remember { mutableStateOf(false) }
+    var lastIndex by remember { mutableStateOf(-1) }
+    val activation = animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 380f),
+        label = "indexWave",
+    )
 
-    fun pick(y: Float) {
-        fingerY = y
-        val idx = ((y / heightPx) * letters.size).toInt().coerceIn(0, letters.size - 1)
-        val letter = letters[idx]
-        if (letter != current) {
-            current = letter
-            view.performHapticFeedback(HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
-            onSelect(letter)
-        }
-    }
+    BoxWithConstraints(modifier.fillMaxHeight().width(IndexWidth)) {
+        val availPx = with(density) { maxHeight.toPx() }
+        val minSlot = with(density) { 13.dp.toPx() }
+        val maxSlot = with(density) { 19.dp.toPx() }
+        val slotPx = (availPx / letters.size).coerceIn(minSlot, maxSlot)
+        val topPx = ((availPx - slotPx * letters.size) / 2f).coerceAtLeast(0f)
+        val waveShift = with(density) { 34.dp.toPx() }
+        val slotDp = with(density) { slotPx.toDp() }
 
-    Box(modifier) {
-        Column(
-            Modifier
-                .onSizeChanged { heightPx = it.height.coerceAtLeast(1) }
-                .pointerInput(letters) { detectTapGestures(onTap = { pick(it.y) }) }
-                .pointerInput(letters) {
-                    detectDragGestures(
-                        onDragStart = { pick(it.y) },
-                        onDragEnd = { current = null },
-                        onDragCancel = { current = null },
-                        onDrag = { change, _ ->
-                            change.consume()
-                            pick(change.position.y)
-                        },
-                    )
+        fun pick(y: Float) {
+            fingerY = y
+            val list = currentLetters
+            val idx = ((y - topPx) / slotPx).toInt().coerceIn(0, list.size - 1)
+            if (idx != lastIndex) {
+                lastIndex = idx
+                val tick = if (android.os.Build.VERSION.SDK_INT >= 34) {
+                    HapticFeedbackConstants.SEGMENT_FREQUENT_TICK
+                } else {
+                    HapticFeedbackConstants.CLOCK_TICK
                 }
-                .padding(horizontal = 6.dp),
-        ) {
-            letters.forEach { l ->
-                Box(Modifier.height(15.dp).width(16.dp), contentAlignment = Alignment.Center) {
-                    BasicText(
-                        l,
-                        style = IosType.footnote.copy(
-                            color = colors.tint,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        ),
-                    )
-                }
+                view.performHapticFeedback(tick)
+                currentActive(list[idx])
+                currentSelect(list[idx])
             }
         }
-        current?.let { letter ->
-            Box(
-                Modifier
-                    .offset { IntOffset((-64).dp.roundToPx(), (fingerY - 22.dp.toPx()).roundToInt()) }
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(colors.selection),
-                contentAlignment = Alignment.Center,
-            ) {
-                BasicText(letter, style = IosType.title3.copy(color = colors.label, fontSize = 24.sp))
+
+        Box(
+            Modifier
+                .fillMaxSize()
+                .pointerInput(topPx, slotPx) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        active = true
+                        lastIndex = -1
+                        pick(down.position.y)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            change.consume()
+                            if (!change.pressed) break
+                            pick(change.position.y)
+                        }
+                        active = false
+                        lastIndex = -1
+                        currentActive(null)
+                    }
+                },
+        ) {
+            Column(Modifier.padding(top = with(density) { topPx.toDp() })) {
+                letters.forEachIndexed { i, letter ->
+                    Box(
+                        Modifier
+                            .height(slotDp)
+                            .width(IndexWidth)
+                            .graphicsLayer {
+                                val a = activation.value
+                                if (a > 0.001f) {
+                                    val center = topPx + slotPx * (i + 0.5f)
+                                    val d = (center - fingerY) / slotPx
+                                    val bump = exp(-(d * d) / 5f) * a
+                                    translationX = -bump * waveShift
+                                    scaleX = 1f + 0.7f * bump
+                                    scaleY = 1f + 0.7f * bump
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BasicText(
+                            letter,
+                            style = IosType.caption.copy(
+                                color = colors.tint,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                }
             }
         }
     }
