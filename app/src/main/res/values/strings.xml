@@ -62,7 +62,15 @@
     <string name="decline">Decline</string>
     <string name="accept">Accept</string>
     <string name="speaker">Speaker</string>
-    <string name="facetime">FaceTime</string>
+    <string name="record">Record</string>
+    <string name="recording">Recording</string>
+    <string name="call_recordings">Call Recordings</string>
+    <string name="no_recordings">No Recordings</string>
+    <string name="recording_section">Call Recording</string>
+    <string name="auto_record">Record calls automatically</string>
+    <string name="auto_record_footer">Recording quality depends on your device. Some phones only capture your own voice unless the speaker is on. Check the recording laws where you live.</string>
+    <string name="recording_channel">Call recording</string>
+    <string name="recording_notification">Recording call</string>
     <string name="mute">Mute</string>
     <string name="more">More</string>
     <string name="end">End</string>

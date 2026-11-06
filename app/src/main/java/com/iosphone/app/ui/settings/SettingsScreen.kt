@@ -136,6 +136,16 @@ fun SettingsScreen() {
                 ToggleRow(stringResource(R.string.key_haptics), AppSettings.keyHaptics) { AppSettings.setKeyHaptics(it) }
             }
 
+            SectionHeader(stringResource(R.string.recording_section))
+            Card {
+                ToggleRow(stringResource(R.string.auto_record), AppSettings.autoRecord) { AppSettings.changeAutoRecord(it) }
+            }
+            BasicText(
+                stringResource(R.string.auto_record_footer),
+                style = IosType.footnote.copy(color = colors.secondaryLabel),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp),
+            )
+
             BasicText(
                 stringResource(R.string.settings_footer),
                 style = IosType.footnote.copy(color = colors.secondaryLabel),
