@@ -1,2 +1,3 @@
 -keepattributes *Annotation*
 -dontwarn kotlin.**
+-keep class eightbitlab.com.blurview.** { *; }

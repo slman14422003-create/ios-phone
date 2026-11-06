@@ -4,15 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.iosphone.app.data.AppSettings
 import com.iosphone.app.ui.shell.ContactsShell
 import com.iosphone.app.ui.theme.IosTheme
 
 class ContactsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppSettings.init(this)
         enableEdgeToEdge()
         setContent {
-            IosTheme { ContactsShell() }
+            IosTheme(syncSystemBars = true) { ContactsShell() }
         }
     }
 }

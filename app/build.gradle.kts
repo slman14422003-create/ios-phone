@@ -48,6 +48,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":blurview"))
     val bom = platform("androidx.compose:compose-bom:2025.02.00")
     implementation(bom)
     implementation("androidx.core:core-ktx:1.15.0")

@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import android.telecom.Call
+import com.iosphone.app.data.AppSettings
 import com.iosphone.app.telecom.CallManager
 import com.iosphone.app.ui.incall.InCallScreen
 import com.iosphone.app.ui.theme.IosTheme
@@ -16,6 +17,7 @@ import com.iosphone.app.ui.theme.IosTheme
 class InCallActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppSettings.init(this)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         enableEdgeToEdge(

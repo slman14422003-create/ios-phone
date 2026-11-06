@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Voicemail
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
@@ -157,6 +158,8 @@ private fun CallsContent() {
                     bold = editing,
                 )
                 Spacer(Modifier.weight(1f))
+                GlassIconButton(Icons.Filled.Settings, onClick = { nav.push(Route.Settings) })
+                Spacer(Modifier.width(10.dp))
                 Box {
                     GlassIconButton(Icons.Filled.FilterList, onClick = { menu = true })
                     GlassMenu(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,8 +46,9 @@ fun GlassSearchField(
     if (autoFocus) {
         LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     }
+    GlassBox(RoundedCornerShape(31.dp), modifier.height(62.dp), contentAlignment = Alignment.CenterStart) {
     Row(
-        modifier.height(62.dp).glass(RoundedCornerShape(31.dp)).padding(horizontal = 20.dp),
+        Modifier.fillMaxSize().padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(Icons.Filled.Search, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(colors.secondaryLabel))
@@ -75,6 +77,7 @@ fun GlassSearchField(
                 colorFilter = ColorFilter.tint(colors.secondaryLabel),
             )
         }
+    }
     }
 }
 

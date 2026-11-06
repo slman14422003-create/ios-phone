@@ -2,6 +2,22 @@ package com.iosphone.app.ui.incall
 
 import android.telecom.Call
 import android.telecom.CallAudioState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.graphicsLayer
+import com.iosphone.app.data.AppSettings
+import com.iosphone.app.ui.common.CallBackdrop
+import com.iosphone.app.ui.common.PadKey
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -125,11 +141,13 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
     var typed by remember { mutableStateOf("") }
     var moreMenu by remember { mutableStateOf(false) }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF2B3649), Color(0xFF141A25)))),
-    ) {
+    val ringingNow = shown != null && shown.state == Call.STATE_RINGING && !finished
+
+    Box(Modifier.fillMaxSize().background(Color(0xFF141A25))) {
+        // User-chosen background (Settings), blurred with BlurView. Cross-fades when a ringing call is answered.
+        Crossfade(targetState = ringingNow, animationSpec = tween(450), label = "callBackdrop") { r ->
+            CallBackdrop(if (r) AppSettings.incoming else AppSettings.active, Modifier.fillMaxSize())
+        }
         if (shown == null) return@Box
         val ringing = shown.state == Call.STATE_RINGING && !finished
         val onHold = shown.state == Call.STATE_HOLDING
@@ -145,6 +163,11 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
         }
         val speakerOn = CallManager.route == CallAudioState.ROUTE_SPEAKER
         val muted = CallManager.muted
+        val mode = when {
+            ringing -> CallMode.Ringing
+            showPad -> CallMode.Pad
+            else -> CallMode.Controls
+        }
 
         Column(
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp),
@@ -195,130 +218,167 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                     modifier = Modifier.height(40.dp),
                 )
             }
-            Spacer(Modifier.weight(1f))
-            if (ringing) {
-                Avatar(shown.name, shown.photo, 132.dp)
-                Spacer(Modifier.weight(1f))
-                Row(horizontalArrangement = Arrangement.spacedBy(48.dp)) {
-                    SmallAction(Icons.Filled.Alarm, stringResource(R.string.remind_me)) {
-                        CallManager.primary()?.let { CallManager.reject(it) }
-                    }
-                    SmallAction(Icons.Filled.ChatBubble, stringResource(R.string.message)) {
-                        val number = shown.number
-                        CallManager.primary()?.let { CallManager.reject(it) }
-                        onMessage(number)
-                    }
-                }
-                Spacer(Modifier.height(36.dp))
-                Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    BigAction(Icons.Filled.CallEnd, stringResource(R.string.decline), callRed) {
-                        CallManager.primary()?.let { CallManager.reject(it) }
-                    }
-                    BigAction(Icons.Filled.Call, stringResource(R.string.accept), callGreen) {
-                        CallManager.primary()?.let { CallManager.answer(it) }
-                    }
-                }
-                Spacer(Modifier.height(36.dp))
-            } else if (showPad) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    padKeys.forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                            row.forEach { (digit, letters) ->
-                                Box(
-                                    Modifier
-                                        .size(76.dp)
-                                        .pressable(pressedScale = 0.92f) {
-                                            typed += digit
-                                            CallManager.primary()?.let { CallManager.dtmf(it, digit[0]) }
-                                        }
-                                        .background(Color.White.copy(alpha = 0.18f), CircleShape),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        BasicText(digit, style = IosType.keypadDigit.copy(color = Color.White, fontSize = 32.sp))
-                                        if (letters.isNotEmpty()) {
-                                            BasicText(letters, style = IosType.keypadLetters.copy(color = Color.White))
+            AnimatedContent(
+                targetState = mode,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                transitionSpec = {
+                    (fadeIn(tween(280)) + scaleIn(tween(280), initialScale = 0.94f)) togetherWith fadeOut(tween(140))
+                },
+                label = "callMode",
+            ) { m ->
+                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(Modifier.weight(1f))
+                    when (m) {
+                        CallMode.Ringing -> {
+                            PulsingAvatar(shown.name, shown.photo)
+                            Spacer(Modifier.weight(1f))
+                            Row(horizontalArrangement = Arrangement.spacedBy(48.dp)) {
+                                SmallAction(Icons.Filled.Alarm, stringResource(R.string.remind_me)) {
+                                    CallManager.primary()?.let { CallManager.reject(it) }
+                                }
+                                SmallAction(Icons.Filled.ChatBubble, stringResource(R.string.message)) {
+                                    val number = shown.number
+                                    CallManager.primary()?.let { CallManager.reject(it) }
+                                    onMessage(number)
+                                }
+                            }
+                            Spacer(Modifier.height(36.dp))
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                BigAction(Icons.Filled.CallEnd, stringResource(R.string.decline), callRed) {
+                                    CallManager.primary()?.let { CallManager.reject(it) }
+                                }
+                                BigAction(Icons.Filled.Call, stringResource(R.string.accept), callGreen) {
+                                    CallManager.primary()?.let { CallManager.answer(it) }
+                                }
+                            }
+                            Spacer(Modifier.height(36.dp))
+                        }
+                        CallMode.Pad -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                padKeys.forEach { row ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                                        row.forEach { (digit, letters) ->
+                                            PadKey(
+                                                digit = digit,
+                                                letters = letters,
+                                                size = 76.dp,
+                                                fill = Color.White.copy(alpha = 0.18f),
+                                                pressedFill = Color.White.copy(alpha = 0.42f),
+                                                content = Color.White,
+                                                onTap = {
+                                                    typed += digit
+                                                    CallManager.primary()?.let { CallManager.dtmf(it, digit[0]) }
+                                                },
+                                            )
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(18.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(Modifier.weight(1f))
-                    Box(Modifier.size(76.dp).pressable { CallManager.primary()?.let { CallManager.hangup(it) } }.background(callRed, CircleShape), contentAlignment = Alignment.Center) {
-                        Image(Icons.Filled.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
-                    }
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        BasicText(
-                            stringResource(R.string.hide),
-                            style = IosType.headline.copy(color = Color.White),
-                            modifier = Modifier.pressable { showPad = false }.padding(12.dp),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(28.dp))
-            } else {
-                Box(Modifier.alpha(if (finished) 0.4f else 1f)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                            CallControl(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.speaker), speakerOn) {
-                                CallManager.setSpeaker(!speakerOn)
+                            Spacer(Modifier.height(18.dp))
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Spacer(Modifier.weight(1f))
+                                Box(Modifier.size(76.dp).pressable { CallManager.primary()?.let { CallManager.hangup(it) } }.background(callRed, CircleShape), contentAlignment = Alignment.Center) {
+                                    Image(Icons.Filled.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
+                                }
+                                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                    BasicText(
+                                        stringResource(R.string.hide),
+                                        style = IosType.headline.copy(color = Color.White),
+                                        modifier = Modifier.pressable { showPad = false }.padding(12.dp),
+                                    )
+                                }
                             }
-                            CallControl(Icons.Filled.Videocam, stringResource(R.string.facetime), false, enabled = false) { }
-                            CallControl(
-                                if (muted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                                stringResource(R.string.mute),
-                                muted,
-                            ) { CallManager.applyMute(!muted) }
+                            Spacer(Modifier.height(28.dp))
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                            Box {
-                                CallControl(Icons.Filled.MoreHoriz, stringResource(R.string.more), moreMenu) { moreMenu = true }
-                                GlassMenu(
-                                    expanded = moreMenu,
-                                    onDismiss = { moreMenu = false },
-                                    alignment = Alignment.TopStart,
-                                    offsetY = (-170).dp,
-                                    width = 230.dp,
-                                    items = buildList {
-                                        add(
-                                            MenuItem(stringResource(if (onHold) R.string.resume else R.string.hold)) {
-                                                CallManager.primary()?.let { if (onHold) CallManager.unhold(it) else CallManager.hold(it) }
-                                            },
-                                        )
-                                        add(MenuItem(stringResource(R.string.add_call)) { onAddCall() })
-                                        if (others.isNotEmpty()) {
-                                            add(
-                                                MenuItem(stringResource(R.string.merge)) {
-                                                    CallManager.primary()?.let { p -> CallManager.merge(p, others.first()) }
+                        CallMode.Controls -> {
+                            Box(Modifier.alpha(if (finished) 0.4f else 1f)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                                        CallControl(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.speaker), speakerOn) {
+                                            CallManager.setSpeaker(!speakerOn)
+                                        }
+                                        CallControl(Icons.Filled.Videocam, stringResource(R.string.facetime), false, enabled = false) { }
+                                        CallControl(
+                                            if (muted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                                            stringResource(R.string.mute),
+                                            muted,
+                                        ) { CallManager.applyMute(!muted) }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                                        Box {
+                                            CallControl(Icons.Filled.MoreHoriz, stringResource(R.string.more), moreMenu) { moreMenu = true }
+                                            GlassMenu(
+                                                expanded = moreMenu,
+                                                onDismiss = { moreMenu = false },
+                                                alignment = Alignment.TopStart,
+                                                offsetY = (-170).dp,
+                                                width = 230.dp,
+                                                items = buildList {
+                                                    add(
+                                                        MenuItem(stringResource(if (onHold) R.string.resume else R.string.hold)) {
+                                                            CallManager.primary()?.let { if (onHold) CallManager.unhold(it) else CallManager.hold(it) }
+                                                        },
+                                                    )
+                                                    add(MenuItem(stringResource(R.string.add_call)) { onAddCall() })
+                                                    if (others.isNotEmpty()) {
+                                                        add(
+                                                            MenuItem(stringResource(R.string.merge)) {
+                                                                CallManager.primary()?.let { p -> CallManager.merge(p, others.first()) }
+                                                            },
+                                                        )
+                                                    }
                                                 },
                                             )
                                         }
-                                    },
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(
-                                    Modifier.size(76.dp).pressable(pressedScale = 0.92f) {
-                                        CallManager.primary()?.let { CallManager.hangup(it) }
-                                    }.background(callRed, CircleShape),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Image(Icons.Filled.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Box(
+                                                Modifier.size(76.dp).pressable(pressedScale = 0.92f) {
+                                                    CallManager.primary()?.let { CallManager.hangup(it) }
+                                                }.background(callRed, CircleShape),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Image(Icons.Filled.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
+                                            }
+                                            Spacer(Modifier.height(8.dp))
+                                            BasicText(stringResource(R.string.end), style = IosType.caption.copy(color = Color.White))
+                                        }
+                                        CallControl(Icons.Filled.Dialpad, stringResource(R.string.keypad), false) { showPad = true }
+                                    }
                                 }
-                                Spacer(Modifier.height(8.dp))
-                                BasicText(stringResource(R.string.end), style = IosType.caption.copy(color = Color.White))
                             }
-                            CallControl(Icons.Filled.Dialpad, stringResource(R.string.keypad), false) { showPad = true }
+                            Spacer(Modifier.height(36.dp))
                         }
                     }
                 }
-                Spacer(Modifier.height(36.dp))
             }
         }
+    }
+}
+
+private enum class CallMode { Ringing, Pad, Controls }
+
+/** Incoming-call avatar with a soft expanding ring, like a heartbeat. */
+@Composable
+private fun PulsingAvatar(name: String, photo: String?) {
+    val transition = rememberInfiniteTransition(label = "ringPulse")
+    val ring by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1900, easing = LinearOutSlowInEasing), RepeatMode.Restart),
+        label = "ring",
+    )
+    Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .size(132.dp)
+                .graphicsLayer {
+                    scaleX = 1f + ring * 0.7f
+                    scaleY = 1f + ring * 0.7f
+                    alpha = (1f - ring) * 0.35f
+                }
+                .background(Color.White, CircleShape),
+        )
+        Avatar(name, photo, 132.dp)
     }
 }
 

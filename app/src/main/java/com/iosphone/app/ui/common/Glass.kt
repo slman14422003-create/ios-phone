@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.viewinterop.AndroidView
+import eightbitlab.com.blurview.BlurTarget
+import eightbitlab.com.blurview.BlurView
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -62,6 +68,54 @@ fun Modifier.glass(shape: Shape): Modifier = composed {
         .border(0.5.dp, c.glassBorder, shape)
 }
 
+/** Set only for UI that sits *above* a BlurTarget (e.g. the bottom bar). When null, glass falls back to a translucent fill. */
+val LocalBlurTarget = staticCompositionLocalOf<BlurTarget?> { null }
+
+/**
+ * iOS-style glass surface. With a [LocalBlurTarget] it blurs whatever is scrolling underneath
+ * using BlurView; otherwise it draws the plain translucent fill.
+ */
+@Composable
+fun GlassBox(
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.TopStart,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val c = Ios.colors
+    val target = LocalBlurTarget.current
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 16.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = if (c.dark) 0.35f else 0.08f),
+                spotColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.18f),
+            )
+            .clip(shape)
+            .border(0.5.dp, c.glassBorder, shape),
+        contentAlignment = contentAlignment,
+    ) {
+        if (target != null) {
+            val tint = c.blurTint.toArgb()
+            AndroidView(
+                factory = { ctx ->
+                    BlurView(ctx).also { v ->
+                        v.setupWith(target, 1f, false).setBlurRadius(22f)
+                        v.setOverlayColor(tint)
+                    }
+                },
+                update = { v -> v.setOverlayColor(tint) },
+                modifier = Modifier.matchParentSize(),
+            )
+        } else {
+            Box(Modifier.matchParentSize().background(c.glass))
+        }
+        content()
+    }
+}
+
 fun Modifier.pressable(enabled: Boolean = true, pressedScale: Float = 0.93f, onClick: () -> Unit): Modifier = composed {
     var pressed by remember { mutableStateOf(false) }
     val s by animateFloatAsState(
@@ -96,12 +150,12 @@ fun GlassIconButton(
     enabled: Boolean = true,
 ) {
     val colors = Ios.colors
-    Box(
+    GlassBox(
+        shape = CircleShape,
         modifier = modifier
             .size(size)
             .alpha(if (enabled) 1f else 0.4f)
-            .pressable(enabled = enabled, onClick = onClick)
-            .glass(CircleShape),
+            .pressable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Image(icon, null, Modifier.size(iconSize), colorFilter = ColorFilter.tint(tint ?: colors.label))
@@ -111,17 +165,17 @@ fun GlassIconButton(
 @Composable
 fun GlassTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, accent: Color? = null, bold: Boolean = false) {
     val colors = Ios.colors
-    Box(
+    GlassBox(
+        shape = RoundedCornerShape(22.dp),
         modifier = modifier
             .height(44.dp)
-            .pressable(onClick = onClick)
-            .glass(RoundedCornerShape(22.dp))
-            .padding(horizontal = 18.dp),
+            .pressable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         BasicText(
             text,
             style = (if (bold) IosType.headline else IosType.body).copy(color = accent ?: colors.label),
+            modifier = Modifier.padding(horizontal = 18.dp),
         )
     }
 }

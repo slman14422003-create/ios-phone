@@ -8,7 +8,16 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
@@ -54,9 +62,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.iosphone.app.R
+import com.iosphone.app.data.AppSettings
 import com.iosphone.app.data.LocalAppData
+import com.iosphone.app.ui.common.PadKey
 import com.iosphone.app.domain.DialSuggest
 import com.iosphone.app.domain.Suggestion
 import com.iosphone.app.ui.common.GlassMenu
@@ -125,12 +137,12 @@ fun KeypadScreen(initialNumber: String?) {
     val suggestion: Suggestion? = remember(raw, data.contacts) { DialSuggest.find(data.contacts, raw) }
 
     fun tick() {
-        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (AppSettings.keyHaptics) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
     fun press(digit: String) {
         tick()
-        runCatching { tones?.startTone(toneFor(digit), 120) }
+        if (AppSettings.keySounds) runCatching { tones?.startTone(toneFor(digit), 120) }
         raw += digit
     }
 
@@ -144,179 +156,170 @@ fun KeypadScreen(initialNumber: String?) {
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(colors.background).statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 24.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            if (raw.isNotEmpty()) {
-                Image(
-                    Icons.Filled.PersonAdd,
-                    null,
-                    Modifier.size(34.dp).pressable { nav.push(Route.Editor(null, raw)) },
-                    colorFilter = ColorFilter.tint(colors.label),
-                )
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(70.dp), contentAlignment = Alignment.Center) {
-            BasicText(
-                text = PhoneFormat.format(raw),
-                style = IosType.dialedNumber.copy(color = colors.label, textAlign = TextAlign.Center),
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).pointerInput(Unit) {
-                    detectTapGestures(onLongPress = { pasteMenu = true })
-                },
-            )
-            GlassMenu(
-                expanded = pasteMenu,
-                onDismiss = { pasteMenu = false },
-                alignment = Alignment.BottomCenter,
-                offsetY = 8.dp,
-                width = 160.dp,
-                items = listOf(
-                    MenuItem(stringResource(R.string.paste)) {
-                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val text = cm.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
-                        val digits = PhoneFormat.digits(text)
-                        if (digits.isNotEmpty()) raw = digits
-                    },
-                ),
-            )
-        }
-        Box(Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
-            if (suggestion != null) {
-                Row(
-                    Modifier
-                        .pressable(pressedScale = 0.97f) { raw = PhoneFormat.digits(suggestion.phone.number) }
-                        .glass(RoundedCornerShape(26.dp))
-                        .height(48.dp)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(Icons.Filled.AccountCircle, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(colors.label))
-                    Spacer(Modifier.width(10.dp))
-                    BasicText(
-                        suggestion.contact.name,
-                        style = IosType.body.copy(color = colors.secondaryLabel),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    BasicText(
-                        highlighted(
-                            PhoneFormat.format(suggestion.phone.number),
-                            suggestion.matchStart,
-                            suggestion.matchLength,
-                            colors.label,
-                            colors.secondaryLabel,
-                        ),
-                        style = IosType.body,
-                        maxLines = 1,
+    BoxWithConstraints(Modifier.fillMaxSize().background(colors.background).statusBarsPadding()) {
+        val gap = 20.dp
+        val keySize = minOf(84.dp, maxOf(64.dp, (maxWidth - 88.dp - gap * 2) / 3))
+        val rowGap = if (maxHeight < 640.dp) 10.dp else 14.dp
+        val enter = fadeIn(tween(160)) + scaleIn(tween(160), initialScale = 0.7f)
+        val exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.7f)
+
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(
+                Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AnimatedVisibility(visible = raw.isNotEmpty(), enter = enter, exit = exit) {
+                    Image(
+                        Icons.Filled.PersonAdd,
+                        null,
+                        Modifier.size(34.dp).pressable { nav.push(Route.Editor(null, raw)) },
+                        colorFilter = ColorFilter.tint(colors.label),
                     )
                 }
             }
-        }
-        Spacer(Modifier.weight(1f))
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            keys.forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                    row.forEach { key ->
-                        KeypadKey(
-                            key = key,
-                            onTap = { press(key.digit) },
-                            onLong = when (key.digit) {
-                                "0" -> {
-                                    {
-                                        tick()
-                                        raw = raw.dropLast(1) + "+"
+            val shownNumber = PhoneFormat.format(raw)
+            val numberSize = when {
+                shownNumber.length <= 11 -> 44.sp
+                shownNumber.length <= 14 -> 38.sp
+                shownNumber.length <= 17 -> 32.sp
+                else -> 26.sp
+            }
+            Box(Modifier.fillMaxWidth().height(70.dp), contentAlignment = Alignment.Center) {
+                BasicText(
+                    text = shownNumber,
+                    style = IosType.dialedNumber.copy(color = colors.label, textAlign = TextAlign.Center, fontSize = numberSize),
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { pasteMenu = true })
+                    },
+                )
+                GlassMenu(
+                    expanded = pasteMenu,
+                    onDismiss = { pasteMenu = false },
+                    alignment = Alignment.BottomCenter,
+                    offsetY = 8.dp,
+                    width = 160.dp,
+                    items = listOf(
+                        MenuItem(stringResource(R.string.paste)) {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val text = cm.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
+                            val digits = PhoneFormat.digits(text)
+                            if (digits.isNotEmpty()) raw = digits
+                        },
+                    ),
+                )
+            }
+            Box(Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
+                AnimatedContent(
+                    targetState = suggestion,
+                    transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(110)) },
+                    label = "suggestion",
+                ) { s ->
+                    if (s != null) {
+                        Row(
+                            Modifier
+                                .pressable(pressedScale = 0.97f) { raw = PhoneFormat.digits(s.phone.number) }
+                                .glass(RoundedCornerShape(26.dp))
+                                .height(48.dp)
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Image(Icons.Filled.AccountCircle, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(colors.label))
+                            Spacer(Modifier.width(10.dp))
+                            BasicText(
+                                s.contact.name,
+                                style = IosType.body.copy(color = colors.secondaryLabel),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            BasicText(
+                                highlighted(
+                                    PhoneFormat.format(s.phone.number),
+                                    s.matchStart,
+                                    s.matchLength,
+                                    colors.label,
+                                    colors.secondaryLabel,
+                                ),
+                                style = IosType.body,
+                                maxLines = 1,
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.size(1.dp))
+                    }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Column(verticalArrangement = Arrangement.spacedBy(rowGap)) {
+                keys.forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        row.forEach { key ->
+                            PadKey(
+                                digit = key.digit,
+                                letters = key.letters,
+                                size = keySize,
+                                fill = colors.keyFill,
+                                pressedFill = colors.keyPressed,
+                                content = colors.label,
+                                onTap = { press(key.digit) },
+                                onLong = when (key.digit) {
+                                    "0" -> {
+                                        {
+                                            tick()
+                                            raw = raw.dropLast(1) + "+"
+                                        }
                                     }
-                                }
-                                "1" -> {
-                                    {
-                                        tick()
-                                        caller(VOICEMAIL)
+                                    "1" -> {
+                                        {
+                                            tick()
+                                            caller(VOICEMAIL)
+                                        }
                                     }
-                                }
-                                else -> null
+                                    else -> null
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(22.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Spacer(Modifier.size(keySize))
+                Spacer(Modifier.size(gap))
+                CallButton(keySize, onTap = ::onCall)
+                Spacer(Modifier.size(gap))
+                Box(modifier = Modifier.size(keySize), contentAlignment = Alignment.Center) {
+                    AnimatedVisibility(visible = raw.isNotEmpty(), enter = enter, exit = exit) {
+                        DeleteButton(
+                            size = keySize,
+                            onDelete = {
+                                tick()
+                                raw = raw.dropLast(1)
                             },
+                            launchJob = { block -> scope.launch { block() } },
                         )
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Spacer(Modifier.size(80.dp))
-            Spacer(Modifier.size(22.dp))
-            CallButton(onTap = ::onCall)
-            Spacer(Modifier.size(22.dp))
-            Box(modifier = Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-                if (raw.isNotEmpty()) {
-                    DeleteButton(
-                        onDelete = {
-                            tick()
-                            raw = raw.dropLast(1)
-                        },
-                        launchJob = { block -> scope.launch { block() } },
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(112.dp))
-    }
-}
-
-@Composable
-private fun KeypadKey(key: Key, onTap: () -> Unit, onLong: (() -> Unit)?) {
-    val colors = Ios.colors
-    var pressed by remember { mutableStateOf(false) }
-    val shape = CircleShape
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .shadow(
-                elevation = if (pressed) 2.dp else 10.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = if (colors.dark) 0.3f else 0.05f),
-                spotColor = Color.Black.copy(alpha = if (colors.dark) 0.4f else 0.12f),
-            )
-            .clip(shape)
-            .background(if (pressed) colors.selection else colors.keyFill)
-            .pointerInput(onLong) {
-                detectTapGestures(
-                    onPress = {
-                        pressed = true
-                        tryAwaitRelease()
-                        pressed = false
-                    },
-                    onTap = { onTap() },
-                    onLongPress = onLong?.let { l -> { _ -> l() } },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            BasicText(key.digit, style = IosType.keypadDigit.copy(color = colors.label))
-            if (key.letters.isNotEmpty()) {
-                BasicText(key.letters, style = IosType.keypadLetters.copy(color = colors.label))
-            }
+            Spacer(Modifier.height(110.dp))
         }
     }
 }
 
 @Composable
-private fun CallButton(onTap: () -> Unit) {
+private fun CallButton(size: Dp, onTap: () -> Unit) {
     val colors = Ios.colors
     Box(
         modifier = Modifier
-            .size(80.dp)
+            .size(size)
             .pressable(pressedScale = 0.92f, onClick = onTap)
             .clip(CircleShape)
             .background(colors.green),
@@ -332,11 +335,11 @@ private fun CallButton(onTap: () -> Unit) {
 }
 
 @Composable
-private fun DeleteButton(onDelete: () -> Unit, launchJob: (suspend () -> Unit) -> Job) {
+private fun DeleteButton(size: Dp, onDelete: () -> Unit, launchJob: (suspend () -> Unit) -> Job) {
     val colors = Ios.colors
     Box(
         modifier = Modifier
-            .size(80.dp)
+            .size(size)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {

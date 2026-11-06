@@ -2,6 +2,7 @@ package com.iosphone.app.ui.common
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,12 +21,14 @@ import com.iosphone.app.ui.calls.CallDetailScreen
 import com.iosphone.app.ui.calls.VoicemailScreen
 import com.iosphone.app.ui.contacts.ContactDetailScreen
 import com.iosphone.app.ui.contacts.ContactEditorScreen
+import com.iosphone.app.ui.settings.SettingsScreen
 
 sealed interface Route {
     data class ContactDetail(val id: Long) : Route
     data class CallInfo(val number: String) : Route
     data class Editor(val id: Long?, val number: String?) : Route
     data object Voicemail : Route
+    data object Settings : Route
 }
 
 class Nav {
@@ -42,22 +45,34 @@ class Nav {
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("Nav missing") }
 
+private val PushEase = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+private const val PushMs = 420
+
+private data class Page(val route: Route?, val depth: Int)
+
 @Composable
 fun RouteLayer(nav: Nav, modifier: Modifier = Modifier) {
-    val top = nav.stack.lastOrNull()
-    BackHandler(enabled = top != null) { nav.pop() }
+    val page = Page(nav.stack.lastOrNull(), nav.stack.size)
+    BackHandler(enabled = page.route != null) { nav.pop() }
     AnimatedContent(
-        targetState = top,
+        targetState = page,
         modifier = modifier.fillMaxSize(),
         transitionSpec = {
+            val forward = targetState.depth >= initialState.depth
+            val slideIn = slideInHorizontally(tween(PushMs, easing = PushEase)) { it }
+            val slideOut = slideOutHorizontally(tween(PushMs, easing = PushEase)) { it }
+            val parallaxIn = slideInHorizontally(tween(PushMs, easing = PushEase)) { -it / 3 } + fadeIn(tween(PushMs))
+            val parallaxOut = slideOutHorizontally(tween(PushMs, easing = PushEase)) { -it / 3 } + fadeOut(tween(PushMs))
             when {
-                initialState == null -> slideInHorizontally(tween(340)) { it } togetherWith fadeOut(tween(200))
-                targetState == null -> fadeIn(tween(200)) togetherWith slideOutHorizontally(tween(340)) { it }
-                else -> slideInHorizontally(tween(340)) { it } togetherWith slideOutHorizontally(tween(340)) { -it / 3 }
+                initialState.route == null -> (slideIn togetherWith fadeOut(tween(PushMs))).also { it.targetContentZIndex = 1f }
+                targetState.route == null -> (fadeIn(tween(PushMs)) togetherWith slideOut).also { it.targetContentZIndex = -1f }
+                forward -> (slideIn togetherWith parallaxOut).also { it.targetContentZIndex = 1f }
+                else -> (parallaxIn togetherWith slideOut).also { it.targetContentZIndex = -1f }
             }
         },
         label = "route",
-    ) { route ->
+    ) { p ->
+        val route = p.route
         if (route != null) {
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { } }) {
                 when (route) {
@@ -65,6 +80,7 @@ fun RouteLayer(nav: Nav, modifier: Modifier = Modifier) {
                     is Route.CallInfo -> CallDetailScreen(route.number)
                     is Route.Editor -> ContactEditorScreen(route.id, route.number)
                     Route.Voicemail -> VoicemailScreen()
+                    Route.Settings -> SettingsScreen()
                 }
             }
         } else {
