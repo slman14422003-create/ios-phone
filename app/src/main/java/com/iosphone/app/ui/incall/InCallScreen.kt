@@ -272,7 +272,7 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                                 if (muted) Icons.Filled.MicOff else Icons.Filled.Mic,
                                 stringResource(R.string.mute),
                                 muted,
-                            ) { CallManager.setMuted(!muted) }
+                            ) { CallManager.applyMute(!muted) }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                             Box {

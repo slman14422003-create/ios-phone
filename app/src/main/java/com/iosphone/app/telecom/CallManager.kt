@@ -101,7 +101,7 @@ object CallManager {
         runCatching { call.conference(other) }
     }
 
-    fun setMuted(value: Boolean) {
+    fun applyMute(value: Boolean) {
         service?.setMuted(value)
         muted = value
     }
