@@ -1,6 +1,25 @@
 package com.iosphone.app.ui.shell
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntOffset
+import android.view.HapticFeedbackConstants
+import com.iosphone.app.ui.common.ScreenBlur
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -48,6 +67,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -102,23 +122,35 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
     val nav = vm.nav
     CompositionLocalProvider(LocalAppData provides data, LocalNav provides nav) {
         RequestPermissionsOnce()
+        val menuOpen = ScreenBlur.count > 0
+        val menuBlur by animateDpAsState(if (menuOpen) 16.dp else 0.dp, tween(240, easing = IosEase), label = "menuBlur")
+        val menuDim by animateFloatAsState(if (menuOpen) 0.3f else 0f, tween(240, easing = IosEase), label = "menuDim")
         Box(Modifier.fillMaxSize().background(colors.background)) {
-            AnimatedContent(
-                targetState = if (vm.searching) 3 else vm.tab,
-                transitionSpec = {
-                    (fadeIn(tween(260, easing = IosEase)) + scaleIn(tween(260, easing = IosEase), initialScale = 0.985f)) togetherWith
-                        fadeOut(tween(140))
-                },
-                label = "tabs",
-            ) { page ->
-                when (page) {
-                    0 -> CallsScreen()
-                    1 -> ContactsScreen()
-                    2 -> KeypadScreen(dialNumber)
-                    else -> SearchScreen(vm.query)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .then(if (menuBlur > 0.dp) Modifier.blur(menuBlur, BlurredEdgeTreatment.Unbounded) else Modifier),
+            ) {
+                AnimatedContent(
+                    targetState = if (vm.searching) 3 else vm.tab,
+                    transitionSpec = {
+                        (fadeIn(tween(260, easing = IosEase)) + scaleIn(tween(260, easing = IosEase), initialScale = 0.985f)) togetherWith
+                            fadeOut(tween(140))
+                    },
+                    label = "tabs",
+                ) { page ->
+                    when (page) {
+                        0 -> CallsScreen()
+                        1 -> ContactsScreen()
+                        2 -> KeypadScreen(dialNumber)
+                        else -> SearchScreen(vm.query)
+                    }
                 }
+                RouteLayer(nav)
             }
-            RouteLayer(nav)
+            if (menuDim > 0.001f) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = menuDim)))
+            }
         }
     }
 }
@@ -183,52 +215,116 @@ private fun BottomBar(
 @Composable
 private fun TabPill(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Ios.colors
-    GlassBox(CircleShape, modifier.height(62.dp)) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val tabWidth = maxWidth / tabs.size
-            val x by animateDpAsState(
-                targetValue = tabWidth * selected,
-                animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
-                label = "pill",
-            )
+    val view = LocalView.current
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    var widthPx by remember { mutableFloatStateOf(0f) }
+    val tabPx = widthPx / tabs.size
+    val pillX = remember { Animatable(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnSelect by rememberUpdatedState(onSelect)
+
+    LaunchedEffect(selected, tabPx) {
+        if (!dragging && tabPx > 0f) {
+            pillX.animateTo(tabPx * selected, spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow))
+        }
+    }
+    val hover by remember(tabPx) {
+        derivedStateOf {
+            if (tabPx <= 0f) 0 else ((pillX.value + tabPx / 2f) / tabPx).toInt().coerceIn(0, tabs.lastIndex)
+        }
+    }
+    LaunchedEffect(hover) {
+        if (dragging) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+    val grow by animateFloatAsState(
+        targetValue = if (dragging) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+        label = "pillGrow",
+    )
+    val shownIndex = if (dragging) hover else selected
+
+    fun settle() {
+        dragging = false
+        if (tabPx <= 0f) return
+        val target = (pillX.value / tabPx).roundToInt().coerceIn(0, tabs.lastIndex)
+        scope.launch {
+            pillX.animateTo(tabPx * target, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium))
+        }
+        if (target != currentSelected) {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            currentOnSelect(target)
+        }
+    }
+
+    GlassBox(
+        CircleShape,
+        modifier
+            .height(62.dp)
+            .onSizeChanged { widthPx = it.width.toFloat() }
+            .pointerInput(tabPx) {
+                detectTapGestures { o ->
+                    if (tabPx > 0f) currentOnSelect((o.x / tabPx).toInt().coerceIn(0, tabs.lastIndex))
+                }
+            }
+            .pointerInput(tabPx) {
+                detectHorizontalDragGestures(
+                    onDragStart = { dragging = true },
+                    onDragEnd = { settle() },
+                    onDragCancel = { settle() },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        val maxX = tabPx * tabs.lastIndex
+                        scope.launch { pillX.snapTo((pillX.value + dx).coerceIn(0f, maxX)) }
+                    },
+                )
+            },
+    ) {
+        if (tabPx > 0f) {
+            val tabWidth = with(density) { tabPx.toDp() }
             Box(
                 Modifier
-                    .offset(x = x)
+                    .offset { IntOffset(pillX.value.roundToInt(), 0) }
                     .width(tabWidth)
                     .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = grow
+                        scaleY = grow
+                    }
                     .padding(5.dp)
                     .clip(CircleShape)
-                    .background(colors.selection),
+                    .background(if (dragging) colors.selection.copy(alpha = 0.7f) else colors.selection),
             )
-            Row(Modifier.fillMaxSize()) {
-                tabs.forEachIndexed { index, spec ->
-                    val active = index == selected
-                    val tint by animateColorAsState(
-                        targetValue = if (active) colors.tint else colors.label,
-                        animationSpec = tween(200),
-                        label = "tabTint",
+        }
+        Row(Modifier.fillMaxSize()) {
+            tabs.forEachIndexed { index, spec ->
+                val active = index == shownIndex
+                val tint by animateColorAsState(
+                    targetValue = if (active) colors.tint else colors.label,
+                    animationSpec = tween(160),
+                    label = "tabTint",
+                )
+                val iconScale by animateFloatAsState(
+                    targetValue = if (active) 1.1f else 1f,
+                    animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                    label = "tabIcon",
+                )
+                Column(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Image(
+                        spec.icon,
+                        null,
+                        Modifier.size(24.dp).graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                        colorFilter = ColorFilter.tint(tint),
                     )
-                    val iconScale by animateFloatAsState(
-                        targetValue = if (active) 1.1f else 1f,
-                        animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
-                        label = "tabIcon",
-                    )
-                    Column(
-                        Modifier.weight(1f).fillMaxHeight().pressable(pressedScale = 0.94f) { onSelect(index) },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Image(
-                            spec.icon,
-                            null,
-                            Modifier.size(24.dp).graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                            },
-                            colorFilter = ColorFilter.tint(tint),
-                        )
-                        BasicText(stringResource(spec.label), style = IosType.tabLabel.copy(color = tint))
-                    }
+                    BasicText(stringResource(spec.label), style = IosType.tabLabel.copy(color = tint))
                 }
             }
         }

@@ -49,6 +49,11 @@
     <string name="email">Email</string>
     <string name="add_phone">add phone</string>
     <string name="add_email">add email</string>
+    <string name="label_mobile">mobile</string>
+    <string name="label_home">home</string>
+    <string name="label_work">work</string>
+    <string name="label_main">main</string>
+    <string name="label_other">other</string>
     <string name="delete_contact">Delete Contact</string>
     <string name="create_contact">Create New Contact</string>
     <string name="add_existing">Add to Existing Contact</string>
