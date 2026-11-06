@@ -296,18 +296,15 @@ fun KeypadScreen(initialNumber: String?) {
                 Spacer(Modifier.size(gap))
                 CallButton(keySize, onTap = ::onCall)
                 Spacer(Modifier.size(gap))
-                Box(modifier = Modifier.size(keySize), contentAlignment = Alignment.Center) {
-                    AnimatedVisibility(visible = raw.isNotEmpty(), enter = enter, exit = exit) {
-                        DeleteButton(
-                            size = keySize,
-                            onDelete = {
-                                tick()
-                                raw = raw.dropLast(1)
-                            },
-                            launchJob = { block -> scope.launch { block() } },
-                        )
-                    }
-                }
+                DeleteSlot(
+                    visible = raw.isNotEmpty(),
+                    size = keySize,
+                    onDelete = {
+                        tick()
+                        raw = raw.dropLast(1)
+                    },
+                    launchJob = { block -> scope.launch { block() } },
+                )
             }
             Spacer(Modifier.height(110.dp))
         }
@@ -368,6 +365,19 @@ private fun DeleteButton(size: Dp, onDelete: () -> Unit, launchJob: (suspend () 
                 colorFilter = ColorFilter.tint(colors.label),
                 modifier = Modifier.size(22.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun DeleteSlot(visible: Boolean, size: Dp, onDelete: () -> Unit, launchJob: (suspend () -> Unit) -> Job) {
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(160)) + scaleIn(tween(160), initialScale = 0.7f),
+            exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.7f),
+        ) {
+            DeleteButton(size = size, onDelete = onDelete, launchJob = launchJob)
         }
     }
 }
