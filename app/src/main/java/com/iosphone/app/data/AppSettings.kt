@@ -86,16 +86,19 @@ object AppSettings {
         active.attach(p)
     }
 
+    @JvmName("applyAppearance")
     fun setAppearance(value: Int) {
         appearance = value
         prefs?.edit()?.putInt("appearance", value)?.apply()
     }
 
+    @JvmName("applyKeySounds")
     fun setKeySounds(value: Boolean) {
         keySounds = value
         prefs?.edit()?.putBoolean("key_sounds", value)?.apply()
     }
 
+    @JvmName("applyKeyHaptics")
     fun setKeyHaptics(value: Boolean) {
         keyHaptics = value
         prefs?.edit()?.putBoolean("key_haptics", value)?.apply()
