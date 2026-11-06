@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 object CallLogRepository {
     suspend fun load(context: Context): List<CallEntry> = withContext(Dispatchers.IO) {
         val args = Bundle().apply {
-            putInt(ContentResolver.QUERY_ARG_LIMIT, 300)
+            putInt(ContentResolver.QUERY_ARG_LIMIT, 500)
             putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(CallLog.Calls.DATE))
             putInt(
                 ContentResolver.QUERY_ARG_SORT_DIRECTION,
@@ -45,5 +45,13 @@ object CallLogRepository {
             }
         }
         out
+    }
+
+    suspend fun delete(context: Context, ids: List<Long>): Boolean = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext true
+        runCatching {
+            val where = CallLog.Calls._ID + " IN (" + ids.joinToString(",") + ")"
+            context.contentResolver.delete(CallLog.Calls.CONTENT_URI, where, null) > 0
+        }.getOrDefault(false)
     }
 }

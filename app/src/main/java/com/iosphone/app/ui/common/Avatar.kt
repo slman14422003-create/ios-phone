@@ -28,18 +28,19 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import com.iosphone.app.ui.theme.Ios
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private object AvatarCache {
-    private val cache = LruCache<String, ImageBitmap>(64)
+    private val cache = LruCache<String, ImageBitmap>(96)
     fun get(key: String?): ImageBitmap? = if (key == null) null else cache.get(key)
     fun put(key: String, value: ImageBitmap) {
         cache.put(key, value)
     }
 }
 
-private fun initials(name: String): String {
+fun initialsOf(name: String): String {
     val words = name.trim().split(' ').filter { it.isNotEmpty() }
     val letters = words.mapNotNull { w -> w.firstOrNull { it.isLetter() } }
     return when {
@@ -52,6 +53,7 @@ private fun initials(name: String): String {
 @Composable
 fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val colors = Ios.colors
     val bitmap by produceState<ImageBitmap?>(AvatarCache.get(photoUri), photoUri) {
         if (photoUri == null) {
             value = null
@@ -72,19 +74,18 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
             }
         }
     }
-    val shape = CircleShape
     val bmp = bitmap
     Box(
         modifier = modifier
             .size(size)
-            .clip(shape)
-            .background(Brush.verticalGradient(listOf(Color(0xFFA5ABB7), Color(0xFF858A96)))),
+            .clip(CircleShape)
+            .background(Brush.verticalGradient(listOf(colors.avatarTop, colors.avatarBottom))),
         contentAlignment = Alignment.Center,
     ) {
         if (bmp != null) {
             Image(bmp, null, Modifier.size(size), contentScale = ContentScale.Crop)
         } else {
-            val text = initials(name)
+            val text = initialsOf(name)
             if (text.isEmpty()) {
                 Image(
                     Icons.Filled.Person,

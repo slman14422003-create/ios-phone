@@ -24,7 +24,7 @@ fun placeCall(context: Context, number: String) {
     } else {
         Uri.fromParts("tel", number, null)
     }
-    tm.placeCall(uri, Bundle())
+    runCatching { tm.placeCall(uri, Bundle()) }
 }
 
 @Composable

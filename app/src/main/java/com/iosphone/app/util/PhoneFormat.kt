@@ -10,4 +10,8 @@ object PhoneFormat {
         val formatted = PhoneNumberUtils.formatNumber(raw, Locale.getDefault().country)
         return formatted ?: raw
     }
+
+    fun key(raw: String): String = raw.filter { it.isDigit() }.takeLast(9)
+
+    fun digits(raw: String): String = raw.filter { it.isDigit() || it == '+' }
 }

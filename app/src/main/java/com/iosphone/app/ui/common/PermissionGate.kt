@@ -1,5 +1,8 @@
 package com.iosphone.app.ui.common
 
+import android.Manifest
+import android.app.role.RoleManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -19,9 +22,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +39,51 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iosphone.app.R
+import com.iosphone.app.data.LocalAppData
 import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
+
+val APP_PERMISSIONS = arrayOf(
+    Manifest.permission.READ_CONTACTS,
+    Manifest.permission.WRITE_CONTACTS,
+    Manifest.permission.READ_CALL_LOG,
+    Manifest.permission.WRITE_CALL_LOG,
+    Manifest.permission.CALL_PHONE,
+    Manifest.permission.READ_PHONE_STATE,
+    Manifest.permission.ANSWER_PHONE_CALLS,
+    Manifest.permission.POST_NOTIFICATIONS,
+)
+
+@Composable
+fun RequestPermissionsOnce() {
+    val context = LocalContext.current
+    val data = LocalAppData.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        data.invalidate()
+    }
+    var asked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!asked) {
+            asked = true
+            val missing = APP_PERMISSIONS.filter {
+                context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (missing.isNotEmpty()) launcher.launch(missing.toTypedArray())
+        }
+    }
+}
+
+object DefaultDialer {
+    fun isDefault(context: Context): Boolean {
+        val rm = context.getSystemService(Context.ROLE_SERVICE) as RoleManager
+        return rm.isRoleHeld(RoleManager.ROLE_DIALER)
+    }
+
+    fun requestIntent(context: Context): Intent {
+        val rm = context.getSystemService(Context.ROLE_SERVICE) as RoleManager
+        return rm.createRequestRoleIntent(RoleManager.ROLE_DIALER)
+    }
+}
 
 @Composable
 fun PermissionGate(
@@ -46,11 +94,14 @@ fun PermissionGate(
 ) {
     val context = LocalContext.current
     val colors = Ios.colors
-    var granted by remember {
+    val data = LocalAppData.current
+    val version = data.version
+    var granted by remember(version) {
         mutableStateOf(context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED)
     }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         granted = it
+        data.invalidate()
     }
     if (granted) {
         content()
@@ -81,7 +132,7 @@ fun PermissionGate(
         )
         Spacer(Modifier.height(24.dp))
         Box(
-            Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(12.dp)).background(colors.tint)
+            Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(25.dp)).background(colors.tint)
                 .clickable { launcher.launch(permission) },
             contentAlignment = Alignment.Center,
         ) {

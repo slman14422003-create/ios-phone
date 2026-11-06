@@ -10,8 +10,8 @@ object ContactSearch {
         val exact = ArrayList<Contact>()
         val partial = ArrayList<Contact>()
         for (c in all) {
-            val nameHit = c.name.contains(q, ignoreCase = true)
-            val numberHit = digits.isNotEmpty() &&
+            val nameHit = c.name.contains(q, ignoreCase = true) || c.company.contains(q, ignoreCase = true)
+            val numberHit = digits.length >= 2 &&
                 c.phones.any { p -> p.number.filter { it.isDigit() }.contains(digits) }
             if (nameHit && c.name.startsWith(q, ignoreCase = true)) exact.add(c)
             else if (nameHit || numberHit) partial.add(c)
