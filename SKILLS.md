@@ -14,3 +14,10 @@
 - Editor: fixed header with scroll hairline, floating labels, clear button, IME next, phone label picker (PhoneLabels in ContactsWriter.kt), animated add/remove rows, autofocus on new rows.
 - Perf: contentType on lazy items, index scroll without coroutine launch.
 - Not verified by a local build: run the GitHub Actions workflow.
+
+## Call recording and FaceTime removal
+- FaceTime placeholder buttons removed (contact detail, in-call controls and the unused string).
+- Recording backend: telecom/CallRecorder.kt (MediaRecorder, tries VOICE_CALL, then VOICE_RECOGNITION, then MIC; AAC m4a), telecom/RecordingService.kt (microphone foreground service), hooks in CallManager state callbacks (start on ACTIVE, stop on DISCONNECTED or removal), AppSettings.autoRecord toggle (default on) in Settings.
+- Storage: filesDir/recordings, name pattern time_in-or-out_number.m4a, parsed by data/Recordings.kt.
+- UI: Route.Recordings(contactId), ui/recordings/RecordingsScreen.kt (play, pause, seek, delete). Contact detail button opens that contact's recordings; the Calls filter menu opens all recordings; in-call button toggles recording manually.
+- Limitation: Android blocks call audio for normal apps, so remote voice is only captured on devices that allow VOICE_CALL or when speaker is on.

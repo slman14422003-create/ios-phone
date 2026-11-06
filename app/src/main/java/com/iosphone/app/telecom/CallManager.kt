@@ -32,6 +32,10 @@ object CallManager {
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             if (state != Call.STATE_RINGING) service?.cancelIncoming()
+            service?.let {
+                if (state == Call.STATE_ACTIVE) CallRecorder.onActive(it, call)
+                if (state == Call.STATE_DISCONNECTED) CallRecorder.onCallEnded(it, call)
+            }
             tick++
         }
 
@@ -43,11 +47,13 @@ object CallManager {
     fun add(call: Call) {
         call.registerCallback(callback)
         calls.add(call)
+        if (call.state == Call.STATE_ACTIVE) service?.let { CallRecorder.onActive(it, call) }
         tick++
     }
 
     fun remove(call: Call) {
         call.unregisterCallback(callback)
+        service?.let { CallRecorder.onCallEnded(it, call) }
         calls.remove(call)
         tick++
     }

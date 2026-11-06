@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Voicemail
@@ -142,6 +143,7 @@ private fun CallsContent() {
     val outgoingLabel = stringResource(R.string.outgoing)
     val incomingLabel = stringResource(R.string.incoming)
     val voicemailLabel = stringResource(R.string.voicemail_title)
+    val recordingsLabel = stringResource(R.string.call_recordings)
 
     LazyColumn(
         Modifier.fillMaxSize().background(colors.background),
@@ -171,6 +173,7 @@ private fun CallsContent() {
                             MenuItem(outgoingLabel, checked = filter == 2) { filter = 2 },
                             MenuItem(incomingLabel, checked = filter == 3) { filter = 3 },
                             MenuItem(voicemailLabel, icon = Icons.Filled.Voicemail) { nav.push(Route.Voicemail) },
+                            MenuItem(recordingsLabel, icon = Icons.Filled.GraphicEq) { nav.push(Route.Recordings(null)) },
                         ),
                     )
                 }

@@ -11,16 +11,19 @@ import android.telecom.CallAudioState
 import android.telecom.InCallService
 import com.iosphone.app.InCallActivity
 import com.iosphone.app.R
+import com.iosphone.app.data.AppSettings
 import com.iosphone.app.util.PhoneFormat
 
 @Suppress("DEPRECATION")
 class CallService : InCallService() {
     override fun onCreate() {
         super.onCreate()
+        AppSettings.init(this)
         CallManager.service = this
     }
 
     override fun onDestroy() {
+        CallRecorder.stop(this)
         if (CallManager.service === this) CallManager.service = null
         super.onDestroy()
     }

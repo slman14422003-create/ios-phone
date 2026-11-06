@@ -71,6 +71,8 @@ object AppSettings {
         private set
     var keyHaptics by mutableStateOf(true)
         private set
+    var autoRecord by mutableStateOf(true)
+        private set
 
     val incoming = CallBgSettings("in")
     val active = CallBgSettings("active")
@@ -82,6 +84,7 @@ object AppSettings {
         appearance = p.getInt("appearance", 0)
         keySounds = p.getBoolean("key_sounds", true)
         keyHaptics = p.getBoolean("key_haptics", true)
+        autoRecord = p.getBoolean("auto_record", true)
         incoming.attach(p)
         active.attach(p)
     }
@@ -102,5 +105,10 @@ object AppSettings {
     fun setKeyHaptics(value: Boolean) {
         keyHaptics = value
         prefs?.edit()?.putBoolean("key_haptics", value)?.apply()
+    }
+
+    fun changeAutoRecord(value: Boolean) {
+        autoRecord = value
+        prefs?.edit()?.putBoolean("auto_record", value)?.apply()
     }
 }

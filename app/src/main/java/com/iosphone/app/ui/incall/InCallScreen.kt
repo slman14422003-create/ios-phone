@@ -16,6 +16,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.graphicsLayer
 import com.iosphone.app.data.AppSettings
+import com.iosphone.app.telecom.CallRecorder
 import com.iosphone.app.ui.common.CallBackdrop
 import com.iosphone.app.ui.common.PadKey
 import androidx.compose.foundation.Image
@@ -46,7 +47,7 @@ import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -297,7 +298,13 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                                         CallControl(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.speaker), speakerOn) {
                                             CallManager.setSpeaker(!speakerOn)
                                         }
-                                        CallControl(Icons.Filled.Videocam, stringResource(R.string.facetime), false, enabled = false) { }
+                                        CallControl(
+                                            Icons.Filled.FiberManualRecord,
+                                            stringResource(if (CallRecorder.recording) R.string.recording else R.string.record),
+                                            CallRecorder.recording,
+                                            enabled = CallRecorder.recording || CallManager.primary()?.state == Call.STATE_ACTIVE,
+                                            activeTint = Color(0xFFFF3B30),
+                                        ) { CallManager.primary()?.let { CallRecorder.toggle(context, it) } }
                                         CallControl(
                                             if (muted) Icons.Filled.MicOff else Icons.Filled.Mic,
                                             stringResource(R.string.mute),
@@ -388,6 +395,7 @@ private fun CallControl(
     label: String,
     active: Boolean,
     enabled: Boolean = true,
+    activeTint: Color = Color(0xFF1C1C1E),
     onClick: () -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.alpha(if (enabled) 1f else 0.4f)) {
@@ -402,7 +410,7 @@ private fun CallControl(
                 icon,
                 null,
                 Modifier.size(30.dp),
-                colorFilter = ColorFilter.tint(if (active) Color(0xFF1C1C1E) else Color.White),
+                colorFilter = ColorFilter.tint(if (active) activeTint else Color.White),
             )
         }
         Spacer(Modifier.height(8.dp))

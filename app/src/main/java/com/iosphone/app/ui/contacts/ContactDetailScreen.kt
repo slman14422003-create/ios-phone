@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,7 +108,7 @@ private fun ContactDetailContent(contact: Contact) {
                 runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + first!!.number))) }
             }
             ActionCircle(Icons.Filled.Call, first != null) { call(first!!.number) }
-            ActionCircle(Icons.Filled.Videocam, false) { }
+            ActionCircle(Icons.Filled.GraphicEq, true) { nav.push(Route.Recordings(contact.id)) }
             ActionCircle(Icons.Filled.Mail, contact.emails.isNotEmpty()) {
                 runCatching {
                     context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + contact.emails.first().address)))

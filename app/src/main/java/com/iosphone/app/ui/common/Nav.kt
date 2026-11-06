@@ -21,12 +21,14 @@ import com.iosphone.app.ui.calls.CallDetailScreen
 import com.iosphone.app.ui.calls.VoicemailScreen
 import com.iosphone.app.ui.contacts.ContactDetailScreen
 import com.iosphone.app.ui.contacts.ContactEditorScreen
+import com.iosphone.app.ui.recordings.RecordingsScreen
 import com.iosphone.app.ui.settings.SettingsScreen
 
 sealed interface Route {
     data class ContactDetail(val id: Long) : Route
     data class CallInfo(val number: String) : Route
     data class Editor(val id: Long?, val number: String?) : Route
+    data class Recordings(val contactId: Long?) : Route
     data object Voicemail : Route
     data object Settings : Route
 }
@@ -79,6 +81,7 @@ fun RouteLayer(nav: Nav, modifier: Modifier = Modifier) {
                     is Route.ContactDetail -> ContactDetailScreen(route.id)
                     is Route.CallInfo -> CallDetailScreen(route.number)
                     is Route.Editor -> ContactEditorScreen(route.id, route.number)
+                    is Route.Recordings -> RecordingsScreen(route.contactId)
                     Route.Voicemail -> VoicemailScreen()
                     Route.Settings -> SettingsScreen()
                 }
