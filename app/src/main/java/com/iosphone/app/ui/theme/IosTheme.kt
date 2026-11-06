@@ -1,6 +1,11 @@
 package com.iosphone.app.ui.theme
 
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -9,6 +14,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.iosphone.app.data.AppSettings
 
 class IosColors(
     val background: Color,
@@ -26,6 +32,8 @@ class IosColors(
     val glassBorder: Color,
     val selection: Color,
     val keyFill: Color,
+    val keyPressed: Color,
+    val blurTint: Color,
     val avatarTop: Color,
     val avatarBottom: Color,
     val dark: Boolean,
@@ -46,7 +54,9 @@ val IosLight = IosColors(
     glass = Color(0xD1FFFFFF),
     glassBorder = Color(0x14000000),
     selection = Color(0x1F767680),
-    keyFill = Color(0xFFF5F5F6),
+    keyFill = Color(0xFFE9E9EB),
+    keyPressed = Color(0xFFB9B9BF),
+    blurTint = Color(0x73FFFFFF),
     avatarTop = Color(0xFFB7BFDB),
     avatarBottom = Color(0xFF8E98BD),
     dark = false,
@@ -68,6 +78,8 @@ val IosDark = IosColors(
     glassBorder = Color(0x29FFFFFF),
     selection = Color(0x40FFFFFF),
     keyFill = Color(0xFF2A2A2C),
+    keyPressed = Color(0xFF6B6B70),
+    blurTint = Color(0x661C1C1E),
     avatarTop = Color(0xFF7B84A6),
     avatarBottom = Color(0xFF555D80),
     dark = true,
@@ -86,14 +98,31 @@ object IosType {
     val footnote = TextStyle(fontFamily = base, fontSize = 13.sp, fontWeight = FontWeight.Normal, letterSpacing = (-0.08).sp)
     val caption = TextStyle(fontFamily = base, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     val tabLabel = TextStyle(fontFamily = base, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.12.sp)
-    val keypadDigit = TextStyle(fontFamily = base, fontSize = 38.sp, fontWeight = FontWeight.Normal)
-    val keypadLetters = TextStyle(fontFamily = base, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+    val keypadDigit = TextStyle(fontFamily = base, fontSize = 36.sp, fontWeight = FontWeight.Normal)
+    val keypadLetters = TextStyle(fontFamily = base, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.5.sp)
     val dialedNumber = TextStyle(fontFamily = base, fontSize = 46.sp, fontWeight = FontWeight.Medium)
 }
 
 @Composable
-fun IosTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) IosDark else IosLight
+fun IosTheme(syncSystemBars: Boolean = false, content: @Composable () -> Unit) {
+    val dark = when (AppSettings.appearance) {
+        1 -> false
+        2 -> true
+        else -> isSystemInDarkTheme()
+    }
+    val colors = if (dark) IosDark else IosLight
+    if (syncSystemBars) {
+        // Keep status/navigation bar icons readable when the user forces light/dark in Settings.
+        val activity = LocalContext.current as? ComponentActivity
+        SideEffect {
+            val bars = if (dark) {
+                SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            } else {
+                SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+            }
+            activity?.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+        }
+    }
     CompositionLocalProvider(LocalIosColors provides colors, content = content)
 }
 

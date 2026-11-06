@@ -1,7 +1,16 @@
 package com.iosphone.app.ui.shell
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.lifecycle.ViewModel
+import com.iosphone.app.ui.common.GlassBox
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -75,45 +84,68 @@ private val tabs = listOf(
     TabSpec(R.string.tab_keypad, Icons.Filled.Dialpad),
 )
 
+/** Shell state lives in a ViewModel because the content and the glass bar are two separate views (see MainActivity). */
+class ShellViewModel : ViewModel() {
+    var tab by mutableIntStateOf(0)
+    var searching by mutableStateOf(false)
+    var query by mutableStateOf("")
+    val nav = Nav()
+}
+
+private val IosEase = CubicBezierEasing(0.25f, 0.8f, 0.25f, 1f)
+
+/** Everything that scrolls. Lives inside the BlurTarget so the bar can blur it. */
 @Composable
-fun PhoneShell(dialNumber: String?) {
+fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
     val colors = Ios.colors
     val data = rememberAppData()
-    val nav = remember { Nav() }
-    var tab by rememberSaveable { mutableIntStateOf(if (dialNumber != null) 2 else 0) }
-    var searching by rememberSaveable { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
-
+    val nav = vm.nav
     CompositionLocalProvider(LocalAppData provides data, LocalNav provides nav) {
         RequestPermissionsOnce()
         Box(Modifier.fillMaxSize().background(colors.background)) {
-            Crossfade(targetState = if (searching) 3 else tab, animationSpec = tween(220), label = "tabs") { page ->
+            AnimatedContent(
+                targetState = if (vm.searching) 3 else vm.tab,
+                transitionSpec = {
+                    (fadeIn(tween(260, easing = IosEase)) + scaleIn(tween(260, easing = IosEase), initialScale = 0.985f)) togetherWith
+                        fadeOut(tween(140))
+                },
+                label = "tabs",
+            ) { page ->
                 when (page) {
                     0 -> CallsScreen()
                     1 -> ContactsScreen()
                     2 -> KeypadScreen(dialNumber)
-                    else -> SearchScreen(query)
+                    else -> SearchScreen(vm.query)
                 }
-            }
-            Box(Modifier.align(Alignment.BottomCenter)) {
-                BottomBar(
-                    tab = tab,
-                    searching = searching,
-                    query = query,
-                    onQuery = { query = it },
-                    onTab = {
-                        tab = it
-                        searching = false
-                        query = ""
-                    },
-                    onSearching = {
-                        searching = it
-                        if (!it) query = ""
-                    },
-                )
             }
             RouteLayer(nav)
         }
+    }
+}
+
+/** The floating glass tab bar / search field. Sits above the BlurTarget. */
+@Composable
+fun PhoneChrome(vm: ShellViewModel) {
+    AnimatedVisibility(
+        visible = vm.nav.stack.isEmpty(),
+        enter = fadeIn(tween(220)) + slideInVertically(tween(300, easing = IosEase)) { it / 2 },
+        exit = fadeOut(tween(140)) + slideOutVertically(tween(240, easing = IosEase)) { it / 2 },
+    ) {
+        BottomBar(
+            tab = vm.tab,
+            searching = vm.searching,
+            query = vm.query,
+            onQuery = { vm.query = it },
+            onTab = {
+                vm.tab = it
+                vm.searching = false
+                vm.query = ""
+            },
+            onSearching = {
+                vm.searching = it
+                if (!it) vm.query = ""
+            },
+        )
     }
 }
 
@@ -128,7 +160,7 @@ private fun BottomBar(
 ) {
     AnimatedContent(
         targetState = searching,
-        transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(140)) },
+        transitionSpec = { (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)) togetherWith fadeOut(tween(140)) },
         modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding(),
         label = "bar",
     ) { isSearching ->
@@ -151,33 +183,52 @@ private fun BottomBar(
 @Composable
 private fun TabPill(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val colors = Ios.colors
-    BoxWithConstraints(modifier.height(62.dp).glass(CircleShape)) {
-        val tabWidth = maxWidth / tabs.size
-        val x by animateDpAsState(
-            targetValue = tabWidth * selected,
-            animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
-            label = "pill",
-        )
-        Box(
-            Modifier
-                .offset(x = x)
-                .width(tabWidth)
-                .fillMaxHeight()
-                .padding(5.dp)
-                .clip(CircleShape)
-                .background(colors.selection),
-        )
-        Row(Modifier.fillMaxSize()) {
-            tabs.forEachIndexed { index, spec ->
-                val active = index == selected
-                val tint = if (active) colors.tint else colors.label
-                Column(
-                    Modifier.weight(1f).fillMaxHeight().pressable(pressedScale = 0.94f) { onSelect(index) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Image(spec.icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(tint))
-                    BasicText(stringResource(spec.label), style = IosType.tabLabel.copy(color = tint))
+    GlassBox(CircleShape, modifier.height(62.dp)) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val tabWidth = maxWidth / tabs.size
+            val x by animateDpAsState(
+                targetValue = tabWidth * selected,
+                animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                label = "pill",
+            )
+            Box(
+                Modifier
+                    .offset(x = x)
+                    .width(tabWidth)
+                    .fillMaxHeight()
+                    .padding(5.dp)
+                    .clip(CircleShape)
+                    .background(colors.selection),
+            )
+            Row(Modifier.fillMaxSize()) {
+                tabs.forEachIndexed { index, spec ->
+                    val active = index == selected
+                    val tint by animateColorAsState(
+                        targetValue = if (active) colors.tint else colors.label,
+                        animationSpec = tween(200),
+                        label = "tabTint",
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (active) 1.1f else 1f,
+                        animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                        label = "tabIcon",
+                    )
+                    Column(
+                        Modifier.weight(1f).fillMaxHeight().pressable(pressedScale = 0.94f) { onSelect(index) },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Image(
+                            spec.icon,
+                            null,
+                            Modifier.size(24.dp).graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            },
+                            colorFilter = ColorFilter.tint(tint),
+                        )
+                        BasicText(stringResource(spec.label), style = IosType.tabLabel.copy(color = tint))
+                    }
                 }
             }
         }

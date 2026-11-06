@@ -73,4 +73,20 @@
     <string name="call_ended">Call Ended</string>
     <string name="unknown">Unknown</string>
     <string name="incoming_channel">Incoming calls</string>
+    <string name="settings_title">Settings</string>
+    <string name="appearance">Appearance</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="bg_incoming">Incoming call screen</string>
+    <string name="bg_active">Outgoing &amp; active call screen</string>
+    <string name="choose_photo">Choose Photo…</string>
+    <string name="blur">Blur</string>
+    <string name="dim">Dim</string>
+    <string name="preview_name">Contact Name</string>
+    <string name="preview_timer">00:42</string>
+    <string name="keypad_section">Keypad</string>
+    <string name="key_sounds">Key sounds</string>
+    <string name="key_haptics">Haptic feedback</string>
+    <string name="settings_footer">Call backgrounds are blurred and dimmed so names and buttons stay readable. Chosen photos stay on this device.</string>
 </resources>
