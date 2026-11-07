@@ -108,7 +108,7 @@ private fun ContactDetailContent(contact: Contact) {
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             ActionCircle(IosIcons.Message, first != null) {
-                runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + first!!.number))) }
+                runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", first!!.number, null))) }
             }
             ActionCircle(IosIcons.Phone, first != null) { call(first!!.number) }
             ActionCircle(IosIcons.Recordings, true) { nav.push(Route.Recordings(contact.id)) }
@@ -179,7 +179,7 @@ private fun ContactDetailContent(contact: Contact) {
         Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(cardShape).background(colors.card)) {
             if (first != null) {
                 ActionRow(stringResource(R.string.send_message)) {
-                    runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + first.number))) }
+                    runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", first.number, null))) }
                 }
                 Hairline()
             }

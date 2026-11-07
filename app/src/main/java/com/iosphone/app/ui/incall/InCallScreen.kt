@@ -2,108 +2,66 @@ package com.iosphone.app.ui.incall
 
 import android.telecom.Call
 import android.telecom.CallAudioState
-import androidx.compose.animation.AnimatedContent
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
-import androidx.compose.ui.graphics.graphicsLayer
-import com.iosphone.app.data.AppSettings
-import com.iosphone.app.telecom.CallRecorder
-import com.iosphone.app.ui.common.IosIcons
-import com.iosphone.app.ui.common.CallBackdrop
-import com.iosphone.app.ui.common.PadKey
-import androidx.compose.foundation.Image
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CallEnd
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.iosphone.app.R
+import com.iosphone.app.data.AppSettings
 import com.iosphone.app.telecom.CallManager
+import com.iosphone.app.telecom.CallRecorder
+import com.iosphone.app.telecom.CallReminder
 import com.iosphone.app.telecom.ContactLookup
 import com.iosphone.app.telecom.LookupInfo
-import com.iosphone.app.ui.common.Avatar
-import com.iosphone.app.ui.common.GlassMenu
-import com.iosphone.app.ui.common.MenuItem
+import com.iosphone.app.telecom.QuickReply
+import com.iosphone.app.telecom.SimManager
+import com.iosphone.app.ui.common.CallBackdrop
 import com.iosphone.app.ui.common.pressable
 import com.iosphone.app.ui.theme.IosType
-import com.iosphone.app.util.Formats
 import com.iosphone.app.util.PhoneFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private class Shown(
+    val call: Call,
     val name: String,
     val number: String,
-    val photo: String?,
     val state: Int,
     val connectTime: Long,
-    val incoming: Boolean,
 )
-
-private val padKeys = listOf(
-    listOf("1" to "", "2" to "ABC", "3" to "DEF"),
-    listOf("4" to "GHI", "5" to "JKL", "6" to "MNO"),
-    listOf("7" to "PQRS", "8" to "TUV", "9" to "WXYZ"),
-    listOf("*" to "", "0" to "+", "#" to ""),
-)
-
-private val callRed = Color(0xFFFF3B30)
-private val callGreen = Color(0xFF34C759)
 
 @Suppress("DEPRECATION")
 @Composable
@@ -117,10 +75,11 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
         val n = info?.number.orEmpty()
         value = withContext(Dispatchers.IO) { ContactLookup.find(context, n) }
     }
+    val sims = remember { SimManager.list(context) }
     val holder = remember { arrayOfNulls<Shown>(1) }
     if (info != null) {
         val label = lookup.name ?: info.displayName ?: PhoneFormat.format(info.number).ifEmpty { stringResource(R.string.unknown) }
-        holder[0] = Shown(label, info.number, lookup.photo, info.state, info.connectTime, info.incoming)
+        holder[0] = Shown(info.call, label, info.number, info.state, info.connectTime)
     }
     val shown = holder[0]
     val finished = CallManager.calls.isEmpty()
@@ -132,317 +91,172 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
         }
     }
 
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = System.currentTimeMillis()
-            delay(1000)
-        }
-    }
     var showPad by remember { mutableStateOf(false) }
     var typed by remember { mutableStateOf("") }
-    var moreMenu by remember { mutableStateOf(false) }
+    var sheet by remember { mutableIntStateOf(0) }
+    BackHandler(enabled = sheet != 0) { sheet = 0 }
 
     val ringingNow = shown != null && shown.state == Call.STATE_RINGING && !finished
+    val cfg = if (ringingNow) AppSettings.incoming else AppSettings.active
+    val look = cfg.look
+    val palette = remember(look) { callPalette(look) }
+    val photo = lookup.fullPhoto ?: lookup.photo
 
     Box(Modifier.fillMaxSize().background(Color(0xFF141A25))) {
-        // User-chosen background (Settings), blurred with BlurView. Cross-fades when a ringing call is answered.
         Crossfade(targetState = ringingNow, animationSpec = tween(450), label = "callBackdrop") { r ->
-            CallBackdrop(if (r) AppSettings.incoming else AppSettings.active, Modifier.fillMaxSize())
+            val c = if (r) AppSettings.incoming else AppSettings.active
+            CallBackdrop(c.look, c.file(context), photo, Modifier.fillMaxSize())
         }
         if (shown == null) return@Box
         val ringing = shown.state == Call.STATE_RINGING && !finished
         val onHold = shown.state == Call.STATE_HOLDING
         val dialing = shown.state == Call.STATE_DIALING || shown.state == Call.STATE_CONNECTING ||
             shown.state == Call.STATE_NEW || shown.state == Call.STATE_SELECT_PHONE_ACCOUNT
-        val statusText = when {
+        val statusLabel: String? = when {
             finished -> stringResource(R.string.call_ended)
             ringing -> stringResource(R.string.mobile)
             dialing -> stringResource(R.string.calling)
             onHold -> stringResource(R.string.on_hold)
-            shown.connectTime > 0 -> Formats.timer(maxOf(0L, (now - shown.connectTime) / 1000))
+            shown.connectTime > 0 -> null
             else -> stringResource(R.string.calling)
         }
-        val speakerOn = CallManager.route == CallAudioState.ROUTE_SPEAKER
-        val muted = CallManager.muted
         val mode = when {
             ringing -> CallMode.Ringing
             showPad -> CallMode.Pad
             else -> CallMode.Controls
         }
-
-        Column(
-            Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(24.dp))
-            if (others.isNotEmpty() && !ringing) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    others.forEach { other ->
-                        val oi = CallManager.info(other)
-                        val oname = oi.displayName ?: PhoneFormat.format(oi.number)
-                        Box(
-                            Modifier
-                                .pressable(pressedScale = 0.96f) { CallManager.swapTo(other) }
-                                .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(20.dp))
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            BasicText(
-                                oname + " · " + stringResource(R.string.on_hold),
-                                style = IosType.callout.copy(color = Color.White),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-            }
-            BasicText(
-                statusText,
-                style = IosType.headline.copy(color = Color.White.copy(alpha = 0.65f), fontWeight = FontWeight.Medium),
-            )
-            Spacer(Modifier.height(6.dp))
-            BasicText(
-                shown.name,
-                style = IosType.largeTitle.copy(color = Color.White, textAlign = TextAlign.Center, fontSize = 32.sp),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (ringing || showPad) {
-                Spacer(Modifier.height(10.dp))
-            }
-            if (showPad && !ringing) {
-                BasicText(
-                    typed,
-                    style = IosType.title1.copy(color = Color.White, textAlign = TextAlign.Center),
-                    maxLines = 1,
-                    modifier = Modifier.height(40.dp),
-                )
-            }
-            AnimatedContent(
-                targetState = mode,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                transitionSpec = {
-                    (fadeIn(tween(280)) + scaleIn(tween(280), initialScale = 0.94f)) togetherWith fadeOut(tween(140))
-                },
-                label = "callMode",
-            ) { m ->
-                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Spacer(Modifier.weight(1f))
-                    when (m) {
-                        CallMode.Ringing -> {
-                            PulsingAvatar(shown.name, shown.photo)
-                            Spacer(Modifier.weight(1f))
-                            Row(horizontalArrangement = Arrangement.spacedBy(48.dp)) {
-                                SmallAction(Icons.Filled.Alarm, stringResource(R.string.remind_me)) {
-                                    CallManager.primary()?.let { CallManager.reject(it) }
-                                }
-                                SmallAction(IosIcons.Message, stringResource(R.string.message)) {
-                                    val number = shown.number
-                                    CallManager.primary()?.let { CallManager.reject(it) }
-                                    onMessage(number)
-                                }
-                            }
-                            Spacer(Modifier.height(36.dp))
-                            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                BigAction(IosIcons.CallEnd, stringResource(R.string.decline), callRed) {
-                                    CallManager.primary()?.let { CallManager.reject(it) }
-                                }
-                                BigAction(IosIcons.Phone, stringResource(R.string.accept), callGreen) {
-                                    CallManager.primary()?.let { CallManager.answer(it) }
-                                }
-                            }
-                            Spacer(Modifier.height(36.dp))
-                        }
-                        CallMode.Pad -> {
-                            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                padKeys.forEach { row ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                                        row.forEach { (digit, letters) ->
-                                            PadKey(
-                                                digit = digit,
-                                                letters = letters,
-                                                size = 76.dp,
-                                                fill = Color.White.copy(alpha = 0.18f),
-                                                pressedFill = Color.White.copy(alpha = 0.42f),
-                                                content = Color.White,
-                                                onTap = {
-                                                    typed += digit
-                                                    CallManager.primary()?.let { CallManager.dtmf(it, digit[0]) }
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(18.dp))
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(Modifier.weight(1f))
-                                Box(Modifier.size(76.dp).pressable { CallManager.primary()?.let { CallManager.hangup(it) } }.background(callRed, CircleShape), contentAlignment = Alignment.Center) {
-                                    Image(IosIcons.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
-                                }
-                                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                    BasicText(
-                                        stringResource(R.string.hide),
-                                        style = IosType.headline.copy(color = Color.White),
-                                        modifier = Modifier.pressable { showPad = false }.padding(12.dp),
-                                    )
-                                }
-                            }
-                            Spacer(Modifier.height(28.dp))
-                        }
-                        CallMode.Controls -> {
-                            Box(Modifier.alpha(if (finished) 0.4f else 1f)) {
-                                Column(verticalArrangement = Arrangement.spacedBy(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                                        CallControl(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.speaker), speakerOn) {
-                                            CallManager.setSpeaker(!speakerOn)
-                                        }
-                                        CallControl(
-                                            Icons.Filled.FiberManualRecord,
-                                            stringResource(if (CallRecorder.recording) R.string.recording else R.string.record),
-                                            CallRecorder.recording,
-                                            enabled = CallRecorder.recording || CallManager.primary()?.state == Call.STATE_ACTIVE,
-                                            activeTint = Color(0xFFFF3B30),
-                                        ) { CallManager.primary()?.let { CallRecorder.toggle(context, it) } }
-                                        CallControl(
-                                            if (muted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                                            stringResource(R.string.mute),
-                                            muted,
-                                        ) { CallManager.applyMute(!muted) }
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                                        Box {
-                                            CallControl(Icons.Filled.MoreHoriz, stringResource(R.string.more), moreMenu) { moreMenu = true }
-                                            GlassMenu(
-                                                expanded = moreMenu,
-                                                onDismiss = { moreMenu = false },
-                                                alignment = Alignment.TopStart,
-                                                offsetY = (-170).dp,
-                                                width = 230.dp,
-                                                items = buildList {
-                                                    add(
-                                                        MenuItem(stringResource(if (onHold) R.string.resume else R.string.hold)) {
-                                                            CallManager.primary()?.let { if (onHold) CallManager.unhold(it) else CallManager.hold(it) }
-                                                        },
-                                                    )
-                                                    add(MenuItem(stringResource(R.string.add_call)) { onAddCall() })
-                                                    if (others.isNotEmpty()) {
-                                                        add(
-                                                            MenuItem(stringResource(R.string.merge)) {
-                                                                CallManager.primary()?.let { p -> CallManager.merge(p, others.first()) }
-                                                            },
-                                                        )
-                                                    }
-                                                },
-                                            )
-                                        }
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Box(
-                                                Modifier.size(76.dp).pressable(pressedScale = 0.92f) {
-                                                    CallManager.primary()?.let { CallManager.hangup(it) }
-                                                }.background(callRed, CircleShape),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Image(IosIcons.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
-                                            }
-                                            Spacer(Modifier.height(8.dp))
-                                            BasicText(stringResource(R.string.end), style = IosType.caption.copy(color = Color.White))
-                                        }
-                                        CallControl(Icons.Filled.Dialpad, stringResource(R.string.keypad), false) { showPad = true }
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(36.dp))
-                        }
-                    }
-                }
-            }
+        val simLabel: String? = if (sims.size > 1) {
+            val handle = shown.call.details?.accountHandle
+            val sim = sims.firstOrNull { it.handle == handle }
+            if (sim == null) null else stringResource(R.string.sim_n, sim.slot + 1) + if (sim.label.isNotBlank()) " · " + sim.label else ""
+        } else {
+            null
         }
-    }
-}
-
-private enum class CallMode { Ringing, Pad, Controls }
-
-/** Incoming-call avatar with a soft expanding ring, like a heartbeat. */
-@Composable
-private fun PulsingAvatar(name: String, photo: String?) {
-    val transition = rememberInfiniteTransition(label = "ringPulse")
-    val ring by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1900, easing = LinearOutSlowInEasing), RepeatMode.Restart),
-        label = "ring",
-    )
-    Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .size(132.dp)
-                .graphicsLayer {
-                    scaleX = 1f + ring * 0.7f
-                    scaleY = 1f + ring * 0.7f
-                    alpha = (1f - ring) * 0.35f
-                }
-                .background(Color.White, CircleShape),
+        val speakerOn = CallManager.route == CallAudioState.ROUTE_SPEAKER
+        val muted = CallManager.muted
+        val ui = CallUi(
+            name = shown.name,
+            number = shown.number,
+            photo = lookup.photo,
+            statusLabel = statusLabel,
+            connectTime = shown.connectTime,
+            sim = simLabel,
+            mode = mode,
+            typed = typed,
+            speakerOn = speakerOn,
+            muted = muted,
+            recording = CallRecorder.recording,
+            recordEnabled = CallRecorder.recording || shown.state == Call.STATE_ACTIVE,
+            onHold = onHold,
+            finished = finished,
+            others = others.map { other ->
+                val oi = CallManager.info(other)
+                OtherCall(oi.displayName ?: PhoneFormat.format(oi.number)) { CallManager.swapTo(other) }
+            },
+            canMerge = others.isNotEmpty(),
         )
-        Avatar(name, photo, 132.dp)
+        val act = CallActions(
+            decline = { CallManager.primary()?.let { CallManager.reject(it) } },
+            accept = { CallManager.primary()?.let { CallManager.answer(it) } },
+            remind = { sheet = 2 },
+            message = { sheet = 1 },
+            speaker = { CallManager.setSpeaker(!speakerOn) },
+            record = { CallManager.primary()?.let { CallRecorder.toggle(context, it) } },
+            mute = { CallManager.applyMute(!muted) },
+            hold = { CallManager.primary()?.let { if (onHold) CallManager.unhold(it) else CallManager.hold(it) } },
+            addCall = onAddCall,
+            merge = { CallManager.primary()?.let { p -> others.firstOrNull()?.let { o -> CallManager.merge(p, o) } } },
+            keypad = { showPad = true },
+            hidePad = { showPad = false },
+            end = { CallManager.primary()?.let { CallManager.hangup(it) } },
+            digit = { d ->
+                if (typed.length < 40) typed += d
+                CallManager.primary()?.let { CallManager.dtmf(it, d[0]) }
+            },
+        )
+        CallContent(ui, act, look, palette, insets = true)
+
+        val replies = AppSettings.quickReplies ?: listOf(
+            stringResource(R.string.qr_1),
+            stringResource(R.string.qr_2),
+            stringResource(R.string.qr_3),
+            stringResource(R.string.qr_4),
+        )
+        val customLabel = stringResource(R.string.qr_custom)
+        val replyItems = remember(replies, customLabel, shown.number) {
+            replies.map { text ->
+                text to {
+                    CallManager.primary()?.let { CallManager.reject(it) }
+                    QuickReply.send(context, shown.number, text)
+                }
+            } + (customLabel to {
+                CallManager.primary()?.let { CallManager.reject(it) }
+                onMessage(shown.number)
+            })
+        }
+        val remindItems = listOf(5, 15, 60).map { minutes ->
+            val label = if (minutes < 60) stringResource(R.string.remind_in_min, minutes) else stringResource(R.string.remind_in_hour)
+            label to {
+                CallManager.primary()?.let { CallManager.reject(it) }
+                CallReminder.schedule(context, shown.number, shown.name, minutes)
+            }
+        }
+        CallSheet(
+            visible = sheet != 0 && ringing,
+            title = stringResource(if (sheet == 2) R.string.remind_title else R.string.quick_reply_title),
+            items = if (sheet == 2) remindItems else replyItems,
+            onDismiss = { sheet = 0 },
+        )
     }
 }
 
 @Composable
-private fun CallControl(
-    icon: ImageVector,
-    label: String,
-    active: Boolean,
-    enabled: Boolean = true,
-    activeTint: Color = Color(0xFF1C1C1E),
-    onClick: () -> Unit,
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.alpha(if (enabled) 1f else 0.4f)) {
-        Box(
-            Modifier
-                .size(76.dp)
-                .pressable(enabled = enabled, pressedScale = 0.92f, onClick = onClick)
-                .background(if (active) Color.White else Color.White.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                icon,
-                null,
-                Modifier.size(30.dp),
-                colorFilter = ColorFilter.tint(if (active) activeTint else Color.White),
+private fun CallSheet(visible: Boolean, title: String, items: List<Pair<String, () -> Unit>>, onDismiss: () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(tween(200)), exit = fadeOut(tween(160))) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .pointerInput(Unit) { detectTapGestures { onDismiss() } },
             )
         }
-        Spacer(Modifier.height(8.dp))
-        BasicText(label, style = IosType.caption.copy(color = Color.White))
-    }
-}
-
-@Composable
-private fun SmallAction(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier.size(56.dp).pressable(pressedScale = 0.92f, onClick = onClick).background(Color.White.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center,
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(tween(280)) { it } + fadeIn(tween(200)),
+            exit = slideOutVertically(tween(220)) { it } + fadeOut(tween(160)),
         ) {
-            Image(icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(Color.White))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xF21C1C1E), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .navigationBarsPadding()
+                    .padding(top = 18.dp, bottom = 12.dp)
+                    .pointerInput(Unit) { detectTapGestures { } },
+            ) {
+                BasicText(
+                    title,
+                    style = IosType.footnote.copy(color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+                )
+                items.forEach { (label, action) ->
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .pressable(pressedScale = 0.98f) {
+                                onDismiss()
+                                action()
+                            }
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        BasicText(label, style = IosType.body.copy(color = Color.White), maxLines = 2)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
         }
-        Spacer(Modifier.height(6.dp))
-        BasicText(label, style = IosType.caption.copy(color = Color.White))
-    }
-}
-
-@Composable
-private fun BigAction(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier.size(80.dp).pressable(pressedScale = 0.92f, onClick = onClick).background(color, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(icon, null, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Color.White))
-        }
-        Spacer(Modifier.height(8.dp))
-        BasicText(label, style = IosType.caption.copy(color = Color.White))
     }
 }

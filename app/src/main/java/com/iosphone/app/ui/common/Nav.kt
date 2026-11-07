@@ -22,7 +22,14 @@ import com.iosphone.app.ui.calls.VoicemailScreen
 import com.iosphone.app.ui.contacts.ContactDetailScreen
 import com.iosphone.app.ui.contacts.ContactEditorScreen
 import com.iosphone.app.ui.recordings.RecordingsScreen
+import com.iosphone.app.ui.settings.AnswerEndScreen
+import com.iosphone.app.ui.settings.BlockedScreen
+import com.iosphone.app.ui.settings.CallStyleScreen
+import com.iosphone.app.ui.settings.OtherCallsScreen
+import com.iosphone.app.ui.settings.QuickRepliesScreen
 import com.iosphone.app.ui.settings.SettingsScreen
+import com.iosphone.app.ui.settings.SpeedDialScreen
+import com.iosphone.app.ui.settings.SupplementaryScreen
 
 sealed interface Route {
     data class ContactDetail(val id: Long) : Route
@@ -31,6 +38,13 @@ sealed interface Route {
     data class Recordings(val contactId: Long?) : Route
     data object Voicemail : Route
     data object Settings : Route
+    data class CallStyle(val incoming: Boolean) : Route
+    data object QuickReplies : Route
+    data object SpeedDial : Route
+    data object Blocked : Route
+    data object AnswerEnd : Route
+    data object Supplementary : Route
+    data object OtherCalls : Route
 }
 
 class Nav {
@@ -84,6 +98,13 @@ fun RouteLayer(nav: Nav, modifier: Modifier = Modifier) {
                     is Route.Recordings -> RecordingsScreen(route.contactId)
                     Route.Voicemail -> VoicemailScreen()
                     Route.Settings -> SettingsScreen()
+                    is Route.CallStyle -> CallStyleScreen(route.incoming)
+                    Route.QuickReplies -> QuickRepliesScreen()
+                    Route.SpeedDial -> SpeedDialScreen()
+                    Route.Blocked -> BlockedScreen()
+                    Route.AnswerEnd -> AnswerEndScreen()
+                    Route.Supplementary -> SupplementaryScreen()
+                    Route.OtherCalls -> OtherCallsScreen()
                 }
             }
         } else {

@@ -119,7 +119,6 @@ fun IosTheme(syncSystemBars: Boolean = false, content: @Composable () -> Unit) {
     }
     val colors = if (dark) IosDark else IosLight
     if (syncSystemBars) {
-        // Keep status/navigation bar icons readable when the user forces light/dark in Settings.
         val activity = LocalContext.current as? ComponentActivity
         SideEffect {
             val bars = if (dark) {

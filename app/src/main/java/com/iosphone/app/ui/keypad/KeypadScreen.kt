@@ -6,9 +6,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import com.iosphone.app.ui.theme.ltr
 import android.content.ClipboardManager
 import android.content.Context
-import android.media.AudioManager
-import android.media.ToneGenerator
-import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -42,12 +39,19 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import com.iosphone.app.util.KeyFeedback
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,7 +61,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -90,7 +93,8 @@ import com.iosphone.app.ui.common.rememberCaller
 import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
 import com.iosphone.app.util.PhoneFormat
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -102,12 +106,6 @@ private val keys = listOf(
     listOf(Key("7", "PQRS"), Key("8", "TUV"), Key("9", "WXYZ")),
     listOf(Key("*", ""), Key("0", "+"), Key("#", "")),
 )
-
-private fun toneFor(digit: String): Int = when (digit) {
-    "*" -> ToneGenerator.TONE_DTMF_S
-    "#" -> ToneGenerator.TONE_DTMF_P
-    else -> digit[0] - '0'
-}
 
 private fun highlighted(number: String, start: Int, length: Int, bold: Color, normal: Color): AnnotatedString {
     var seen = 0
@@ -130,7 +128,6 @@ private fun highlighted(number: String, start: Int, length: Int, bold: Color, no
 fun KeypadScreen(initialNumber: String?) {
     val colors = Ios.colors
     val context = LocalContext.current
-    val view = LocalView.current
     val scope = rememberCoroutineScope()
     val data = LocalAppData.current
     val nav = LocalNav.current
@@ -143,25 +140,26 @@ fun KeypadScreen(initialNumber: String?) {
         SimManager.find(sims, simId) ?: SimManager.find(sims, AppSettings.defaultSim) ?: sims.firstOrNull()
     }
     val caller = rememberCaller { if (sims.size > 1) activeSim?.handle else null }
-    val tones = remember { runCatching { ToneGenerator(AudioManager.STREAM_DTMF, 70) }.getOrNull() }
-    DisposableEffect(Unit) { onDispose { tones?.release() } }
+    LaunchedEffect(Unit) { KeyFeedback.start(context) }
     LaunchedEffect(initialNumber) {
         if (!initialNumber.isNullOrEmpty()) raw = PhoneFormat.digits(initialNumber)
     }
-    val suggestion: Suggestion? = remember(raw, data.contacts) { DialSuggest.find(data.contacts, raw) }
-
-    fun tick() {
-        if (AppSettings.keyHaptics) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    val suggestion by produceState<Suggestion?>(null, raw, data.contacts) {
+        if (raw.isEmpty()) {
+            value = null
+        } else {
+            delay(45)
+            value = withContext(Dispatchers.Default) { DialSuggest.find(data.contacts, raw) }
+        }
     }
 
     fun press(digit: String) {
-        tick()
-        if (AppSettings.keySounds) runCatching { tones?.startTone(toneFor(digit), 120) }
-        raw += digit
+        KeyFeedback.press(digit)
+        if (raw.length < 40) raw += digit
     }
 
     fun onCall() {
-        tick()
+        KeyFeedback.tick()
         if (raw.isEmpty()) {
             val last = data.calls.firstOrNull { it.isOutgoing }
             if (last != null) raw = PhoneFormat.digits(last.number)
@@ -193,7 +191,7 @@ fun KeypadScreen(initialNumber: String?) {
                     )
                 }
             }
-            val shownNumber = PhoneFormat.format(raw)
+            val shownNumber = remember(raw) { PhoneFormat.format(raw) }
             val numberSize = when {
                 shownNumber.length <= 11 -> 44.sp
                 shownNumber.length <= 14 -> 38.sp
@@ -220,7 +218,7 @@ fun KeypadScreen(initialNumber: String?) {
                         MenuItem(stringResource(R.string.paste)) {
                             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val text = cm.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
-                            val digits = PhoneFormat.digits(text)
+                            val digits = PhoneFormat.digits(text).take(40)
                             if (digits.isNotEmpty()) raw = digits
                         },
                     ),
@@ -274,6 +272,7 @@ fun KeypadScreen(initialNumber: String?) {
                 keys.forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                         row.forEach { key ->
+                            val speed = key.digit.singleOrNull()?.takeIf { it in '2'..'9' }?.let { AppSettings.speedDial[it - '0'] }
                             PadKey(
                                 digit = key.digit,
                                 letters = key.letters,
@@ -281,18 +280,26 @@ fun KeypadScreen(initialNumber: String?) {
                                 fill = colors.keyFill,
                                 pressedFill = colors.keyPressed,
                                 content = colors.label,
-                                onTap = { press(key.digit) },
-                                onLong = when (key.digit) {
-                                    "0" -> {
+                                onPress = { press(key.digit) },
+                                onLong = when {
+                                    key.digit == "0" -> {
                                         {
-                                            tick()
+                                            KeyFeedback.tick()
                                             raw = raw.dropLast(1) + "+"
                                         }
                                     }
-                                    "1" -> {
+                                    key.digit == "1" -> {
                                         {
-                                            tick()
+                                            KeyFeedback.tick()
+                                            raw = raw.dropLast(1)
                                             caller(VOICEMAIL)
+                                        }
+                                    }
+                                    speed != null -> {
+                                        {
+                                            KeyFeedback.tick()
+                                            raw = raw.dropLast(1)
+                                            caller(speed.number)
                                         }
                                     }
                                     else -> null
@@ -330,11 +337,11 @@ fun KeypadScreen(initialNumber: String?) {
                 DeleteSlot(
                     visible = raw.isNotEmpty(),
                     size = keySize,
-                    onDelete = {
-                        tick()
+                    onDelete = { step ->
+                        if (step == 0 || step % 4 == 0) KeyFeedback.tick()
                         raw = raw.dropLast(1)
                     },
-                    launchJob = { block -> scope.launch { block() } },
+                    scope = scope,
                 )
             }
             Spacer(Modifier.height(110.dp))
@@ -375,26 +382,31 @@ private fun CallButton(size: Dp, onTap: () -> Unit) {
 }
 
 @Composable
-private fun DeleteButton(size: Dp, onDelete: () -> Unit, launchJob: (suspend () -> Unit) -> Job) {
+private fun DeleteButton(size: Dp, onDelete: (Int) -> Unit, scope: CoroutineScope) {
     val colors = Ios.colors
+    val del = rememberUpdatedState(onDelete)
     Box(
         modifier = Modifier
             .size(size)
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        onDelete()
-                        val job = launchJob {
-                            delay(450)
-                            while (true) {
-                                onDelete()
-                                delay(70)
-                            }
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    del.value(0)
+                    val job = scope.launch {
+                        delay(380)
+                        var step = 1
+                        while (isActive) {
+                            del.value(step)
+                            delay(if (step < 8) 80L else 45L)
+                            step++
                         }
-                        tryAwaitRelease()
+                    }
+                    try {
+                        waitForUpOrCancellation()
+                    } finally {
                         job.cancel()
-                    },
-                )
+                    }
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -413,14 +425,14 @@ private fun DeleteButton(size: Dp, onDelete: () -> Unit, launchJob: (suspend () 
 }
 
 @Composable
-private fun DeleteSlot(visible: Boolean, size: Dp, onDelete: () -> Unit, launchJob: (suspend () -> Unit) -> Job) {
+private fun DeleteSlot(visible: Boolean, size: Dp, onDelete: (Int) -> Unit, scope: CoroutineScope) {
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(tween(160)) + scaleIn(tween(160), initialScale = 0.7f),
             exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.7f),
         ) {
-            DeleteButton(size = size, onDelete = onDelete, launchJob = launchJob)
+            DeleteButton(size = size, onDelete = onDelete, scope = scope)
         }
     }
 }

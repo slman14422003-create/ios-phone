@@ -1,25 +1,24 @@
 package com.iosphone.app.ui.common
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -27,11 +26,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iosphone.app.ui.theme.IosType
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
-/**
- * One round dial-pad key, iOS style: the digit always sits on the same baseline (even for "1" and "*"),
- * the letters sit under it, and on press the fill lights up instantly then fades out slowly.
- */
 @Composable
 fun PadKey(
     digit: String,
@@ -41,31 +38,47 @@ fun PadKey(
     pressedFill: Color,
     content: Color,
     modifier: Modifier = Modifier,
-    onTap: () -> Unit,
+    onPress: () -> Unit,
     onLong: (() -> Unit)? = null,
 ) {
-    var pressed by remember { mutableStateOf(false) }
-    val bg by animateColorAsState(
-        targetValue = if (pressed) pressedFill else fill,
-        animationSpec = if (pressed) tween<Color>(30) else tween<Color>(420),
-        label = "padKeyFill",
-    )
+    val level = remember { mutableFloatStateOf(0f) }
+    val scope = rememberCoroutineScope()
+    val fade = remember { arrayOfNulls<Job>(1) }
+    val press = rememberUpdatedState(onPress)
+    val long = rememberUpdatedState(onLong)
     val k = size.value / 80f
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
-            .background(bg)
-            .pointerInput(onTap, onLong) {
-                detectTapGestures(
-                    onPress = {
-                        pressed = true
-                        tryAwaitRelease()
-                        pressed = false
-                    },
-                    onTap = { onTap() },
-                    onLongPress = onLong?.let { l -> { _: Offset -> l() } },
-                )
+            .drawBehind {
+                drawCircle(fill)
+                val a = level.floatValue
+                if (a > 0f) drawCircle(pressedFill, alpha = a)
+            }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    fade[0]?.cancel()
+                    level.floatValue = 1f
+                    press.value()
+                    val longAction = long.value
+                    if (longAction != null) {
+                        var released = false
+                        withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            waitForUpOrCancellation()
+                            released = true
+                        }
+                        if (!released) {
+                            longAction()
+                            waitForUpOrCancellation()
+                        }
+                    } else {
+                        waitForUpOrCancellation()
+                    }
+                    fade[0] = scope.launch {
+                        animate(level.floatValue, 0f, animationSpec = tween(380)) { v, _ -> level.floatValue = v }
+                    }
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
