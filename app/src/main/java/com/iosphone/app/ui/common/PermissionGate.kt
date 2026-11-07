@@ -53,6 +53,8 @@ val APP_PERMISSIONS = arrayOf(
     Manifest.permission.ANSWER_PHONE_CALLS,
     Manifest.permission.POST_NOTIFICATIONS,
     Manifest.permission.RECORD_AUDIO,
+    Manifest.permission.READ_PHONE_NUMBERS,
+    Manifest.permission.BLUETOOTH_CONNECT,
 )
 
 @Composable

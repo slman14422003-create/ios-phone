@@ -21,3 +21,10 @@
 - Storage: filesDir/recordings, name pattern time_in-or-out_number.m4a, parsed by data/Recordings.kt.
 - UI: Route.Recordings(contactId), ui/recordings/RecordingsScreen.kt (play, pause, seek, delete). Contact detail button opens that contact's recordings; the Calls filter menu opens all recordings; in-call button toggles recording manually.
 - Limitation: Android blocks call audio for normal apps, so remote voice is only captured on devices that allow VOICE_CALL or when speaker is on.
+
+## Dual SIM, animations, lock-screen reliability
+- SIM: telecom/SimManager.kt (call-capable SIM accounts with slot, label, number), AppSettings.defaultSim (empty means ask every time), ui/common/SimPicker.kt (iOS action sheet in a Dialog window with spring slide, hosted by PhoneShell and ContactsShell), Caller.kt dispatchCall picks handle (override, default, or sheet), keypad SIM chip with menu, Settings section for default SIM.
+- Animations: iosRow press highlight (Glass.kt), animateItem on contact and call rows, spring sheet, predictive back enabled in manifest.
+- Lock screen: new permissions (READ_PHONE_NUMBERS, BLUETOOTH_CONNECT, WAKE_LOCK, VIBRATE, MODIFY_AUDIO_SETTINGS, DISABLE_KEYGUARD, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, voicemail), ProximityLock wake lock during earpiece calls, public notification visibility, Settings rows for full-screen intent, battery optimization and notifications with live status.
+- Stability: PhoneApp crash logger (filesDir/crash.log), lint no longer aborts release builds, packaging excludes, profileinstaller, lifecycle-process, startup, LeakCanary in debug only, extra proguard keep rules.
+- Not verified by a local build: run the GitHub Actions workflow.

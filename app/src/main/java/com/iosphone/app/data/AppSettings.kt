@@ -73,6 +73,8 @@ object AppSettings {
         private set
     var autoRecord by mutableStateOf(true)
         private set
+    var defaultSim by mutableStateOf("")
+        private set
 
     val incoming = CallBgSettings("in")
     val active = CallBgSettings("active")
@@ -85,6 +87,7 @@ object AppSettings {
         keySounds = p.getBoolean("key_sounds", true)
         keyHaptics = p.getBoolean("key_haptics", true)
         autoRecord = p.getBoolean("auto_record", true)
+        defaultSim = p.getString("default_sim", "").orEmpty()
         incoming.attach(p)
         active.attach(p)
     }
@@ -110,5 +113,10 @@ object AppSettings {
     fun changeAutoRecord(value: Boolean) {
         autoRecord = value
         prefs?.edit()?.putBoolean("auto_record", value)?.apply()
+    }
+
+    fun changeDefaultSim(value: String) {
+        defaultSim = value
+        prefs?.edit()?.putString("default_sim", value)?.apply()
     }
 }

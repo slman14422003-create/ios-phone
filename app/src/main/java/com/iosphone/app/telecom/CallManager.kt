@@ -32,6 +32,7 @@ object CallManager {
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             if (state != Call.STATE_RINGING) service?.cancelIncoming()
+            service?.refreshProximity()
             service?.let {
                 if (state == Call.STATE_ACTIVE) CallRecorder.onActive(it, call)
                 if (state == Call.STATE_DISCONNECTED) CallRecorder.onCallEnded(it, call)

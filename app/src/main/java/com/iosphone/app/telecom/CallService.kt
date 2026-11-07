@@ -24,8 +24,15 @@ class CallService : InCallService() {
 
     override fun onDestroy() {
         CallRecorder.stop(this)
+        ProximityLock.release()
         if (CallManager.service === this) CallManager.service = null
         super.onDestroy()
+    }
+
+    fun refreshProximity() {
+        val inCall = CallManager.calls.any { it.state == Call.STATE_ACTIVE || it.state == Call.STATE_DIALING }
+        val nearEar = CallManager.route == CallAudioState.ROUTE_EARPIECE || CallManager.route == CallAudioState.ROUTE_WIRED_HEADSET
+        ProximityLock.update(this, inCall && nearEar)
     }
 
     override fun onCallAdded(call: Call) {
@@ -36,6 +43,7 @@ class CallService : InCallService() {
     override fun onCallRemoved(call: Call) {
         CallManager.remove(call)
         cancelIncoming()
+        refreshProximity()
     }
 
     override fun onCallAudioStateChanged(audioState: CallAudioState?) {
@@ -43,6 +51,7 @@ class CallService : InCallService() {
             CallManager.muted = audioState.isMuted
             CallManager.route = audioState.route
         }
+        refreshProximity()
     }
 
     fun cancelIncoming() {
@@ -85,6 +94,7 @@ class CallService : InCallService() {
             .setContentIntent(open)
             .setFullScreenIntent(open, true)
             .setCategory(Notification.CATEGORY_CALL)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setStyle(Notification.CallStyle.forIncomingCall(person, decline, answer))
             .build()

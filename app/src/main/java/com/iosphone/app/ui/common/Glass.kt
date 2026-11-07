@@ -1,6 +1,8 @@
 package com.iosphone.app.ui.common
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
@@ -143,6 +145,28 @@ fun GlassBox(
         }
         content()
     }
+}
+
+fun Modifier.iosRow(onClick: () -> Unit): Modifier = composed {
+    var pressed by remember { mutableStateOf(false) }
+    val tint = Ios.colors.fill
+    val bg = animateColorAsState(
+        targetValue = if (pressed) tint else Color.Transparent,
+        animationSpec = tween(if (pressed) 40 else 320),
+        label = "rowPress",
+    )
+    this
+        .drawBehind { drawRect(bg.value) }
+        .pointerInput(onClick) {
+            detectTapGestures(
+                onPress = {
+                    pressed = true
+                    tryAwaitRelease()
+                    pressed = false
+                },
+                onTap = { onClick() },
+            )
+        }
 }
 
 fun Modifier.pressable(enabled: Boolean = true, pressedScale: Float = 0.93f, onClick: () -> Unit): Modifier = composed {

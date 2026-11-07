@@ -241,6 +241,7 @@ private fun CallsContent() {
         }
         items(groups, key = { it.first.id }, contentType = { "call" }) { g ->
             val contact = data.contactFor(g.first.number)
+            Box(Modifier.animateItem()) {
             CallRow(
                 g = g,
                 contact = contact,
@@ -257,6 +258,7 @@ private fun CallsContent() {
                     }
                 },
             )
+            }
         }
     }
 }

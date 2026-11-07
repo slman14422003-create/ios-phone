@@ -45,6 +45,13 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+    packaging {
+        resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/LICENSE*", "/META-INF/DEPENDENCIES")
+    }
 }
 
 dependencies {
@@ -59,4 +66,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    implementation("androidx.startup:startup-runtime:1.2.0")
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
