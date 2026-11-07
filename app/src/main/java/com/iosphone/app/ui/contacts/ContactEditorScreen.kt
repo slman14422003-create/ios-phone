@@ -317,16 +317,16 @@ private fun ColumnScope.EntryRow(entry: FieldEntry, onGone: () -> Unit, content:
     }
 }
 
+/** Localised name for a phone label key; custom labels the user typed are shown as they are. */
 @Composable
-private fun labelText(label: String): String = stringResource(
-    when (label) {
-        "home" -> R.string.label_home
-        "work" -> R.string.label_work
-        "main" -> R.string.label_main
-        "other" -> R.string.label_other
-        else -> R.string.label_mobile
-    },
-)
+fun labelText(label: String): String = when (label.trim().lowercase()) {
+    "", "mobile" -> stringResource(R.string.label_mobile)
+    "home" -> stringResource(R.string.label_home)
+    "work" -> stringResource(R.string.label_work)
+    "main" -> stringResource(R.string.label_main)
+    "other" -> stringResource(R.string.label_other)
+    else -> label
+}
 
 @Composable
 private fun PhoneEntryRow(entry: FieldEntry, autoFocus: Boolean, onRemove: () -> Unit) {

@@ -1,5 +1,9 @@
 package com.iosphone.app.ui.keypad
 
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
+import com.iosphone.app.ui.theme.ltr
 import android.content.ClipboardManager
 import android.content.Context
 import android.media.AudioManager
@@ -199,7 +203,7 @@ fun KeypadScreen(initialNumber: String?) {
             Box(Modifier.fillMaxWidth().height(70.dp), contentAlignment = Alignment.Center) {
                 BasicText(
                     text = shownNumber,
-                    style = IosType.dialedNumber.copy(color = colors.label, textAlign = TextAlign.Center, fontSize = numberSize),
+                    style = IosType.dialedNumber.copy(color = colors.label, textAlign = TextAlign.Center, fontSize = numberSize).ltr(),
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).pointerInput(Unit) {
@@ -265,6 +269,7 @@ fun KeypadScreen(initialNumber: String?) {
                 }
             }
             Spacer(Modifier.weight(1f))
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Column(verticalArrangement = Arrangement.spacedBy(rowGap)) {
                 keys.forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
@@ -297,6 +302,7 @@ fun KeypadScreen(initialNumber: String?) {
                     }
                 }
             }
+            }
             Spacer(Modifier.height(22.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -313,7 +319,7 @@ fun KeypadScreen(initialNumber: String?) {
                             offsetY = (-(sims.size * 46 + 28)).dp,
                             width = 230.dp,
                             items = sims.map { sim ->
-                                MenuItem(sim.label + "  ·  SIM " + (sim.slot + 1), checked = sim.id == activeSim.id) { simId = sim.id }
+                                MenuItem(sim.label + "  ·  " + stringResource(R.string.sim_n, sim.slot + 1), checked = sim.id == activeSim.id) { simId = sim.id }
                             },
                         )
                     }
@@ -344,7 +350,7 @@ private fun SimChip(number: Int, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(Icons.Filled.SimCard, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(colors.tint))
-        BasicText("SIM $number", style = IosType.caption.copy(color = colors.tint, fontWeight = FontWeight.SemiBold))
+        BasicText(stringResource(R.string.sim_n, number), style = IosType.caption.copy(color = colors.tint, fontWeight = FontWeight.SemiBold))
     }
 }
 

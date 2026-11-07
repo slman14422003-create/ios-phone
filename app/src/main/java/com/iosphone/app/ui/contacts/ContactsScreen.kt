@@ -1,5 +1,8 @@
 package com.iosphone.app.ui.contacts
 
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import com.iosphone.app.ui.theme.autoDir
 import android.Manifest
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -274,9 +277,10 @@ fun ContactRow(c: Contact, endInset: Dp = 0.dp, modifier: Modifier = Modifier, o
             Spacer(Modifier.width(12.dp))
             BasicText(
                 text,
-                style = IosType.body.copy(color = colors.label),
+                style = IosType.body.copy(color = colors.label).autoDir(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
         }
         Hairline(66.dp, endInset)
@@ -293,6 +297,7 @@ private fun SideIndex(
     val colors = Ios.colors
     val view = LocalView.current
     val density = LocalDensity.current
+    val waveSign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else -1f
     val currentLetters by rememberUpdatedState(letters)
     val currentSelect by rememberUpdatedState(onSelect)
     val currentActive by rememberUpdatedState(onActive)
@@ -366,7 +371,7 @@ private fun SideIndex(
                                     val center = topPx + slotPx * (i + 0.5f)
                                     val d = (center - fingerY) / slotPx
                                     val bump = exp(-(d * d) / 5f) * a
-                                    translationX = -bump * waveShift
+                                    translationX = waveSign * bump * waveShift
                                     scaleX = 1f + 0.7f * bump
                                     scaleY = 1f + 0.7f * bump
                                 }

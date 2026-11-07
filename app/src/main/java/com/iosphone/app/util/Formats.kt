@@ -7,6 +7,8 @@ import java.util.Date
 import java.util.Locale
 
 object Formats {
+    private fun ar() = Locale.getDefault().language == "ar"
+
     fun callDate(ms: Long): String {
         val date = Date(ms)
         if (DateUtils.isToday(ms)) return DateFormat.getTimeInstance(DateFormat.SHORT).format(date)
@@ -14,7 +16,7 @@ object Formats {
         val then = Calendar.getInstance().apply { timeInMillis = ms }
         val days = ((startOfDay(now) - startOfDay(then)) / DateUtils.DAY_IN_MILLIS).toInt()
         return when {
-            days == 1 -> "Yesterday"
+            days == 1 -> if (ar()) "أمس" else "Yesterday"
             days in 2..6 -> java.text.SimpleDateFormat("EEEE", Locale.getDefault()).format(date)
             else -> DateFormat.getDateInstance(DateFormat.SHORT).format(date)
         }
@@ -24,7 +26,7 @@ object Formats {
         val date = Date(ms)
         val d = DateFormat.getDateInstance(DateFormat.MEDIUM).format(date)
         val t = DateFormat.getTimeInstance(DateFormat.SHORT).format(date)
-        return if (DateUtils.isToday(ms)) "Today, $t" else "$d, $t"
+        return if (DateUtils.isToday(ms)) (if (ar()) "اليوم، $t" else "Today, $t") else "$d, $t"
     }
 
     fun duration(seconds: Long): String {
@@ -32,10 +34,11 @@ object Formats {
         val h = seconds / 3600
         val m = (seconds % 3600) / 60
         val s = seconds % 60
+        val (hu, mu, su) = if (ar()) Triple("س", "د", "ث") else Triple("h", "m", "s")
         return when {
-            h > 0 -> "${h}h ${m}m"
-            m > 0 -> "${m}m ${s}s"
-            else -> "${s}s"
+            h > 0 -> "$h$hu $m$mu"
+            m > 0 -> "$m$mu $s$su"
+            else -> "$s$su"
         }
     }
 

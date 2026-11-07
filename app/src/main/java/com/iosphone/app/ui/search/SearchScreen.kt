@@ -1,5 +1,7 @@
 package com.iosphone.app.ui.search
 
+import com.iosphone.app.ui.theme.autoDir
+import com.iosphone.app.ui.theme.ltr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -95,9 +97,9 @@ fun SearchScreen(query: String) {
                         Avatar(c.name, c.thumbUri, 38.dp)
                         Spacer(Modifier.width(12.dp))
                         Column {
-                            BasicText(c.name, style = IosType.body.copy(color = colors.label), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            BasicText(c.name, style = IosType.body.copy(color = colors.label).autoDir(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             c.phones.firstOrNull()?.let {
-                                BasicText(PhoneFormat.format(it.number), style = IosType.footnote.copy(color = colors.secondaryLabel), maxLines = 1)
+                                BasicText(PhoneFormat.format(it.number), style = IosType.footnote.copy(color = colors.secondaryLabel).ltr(), maxLines = 1)
                             }
                         }
                     }
@@ -118,7 +120,7 @@ fun SearchScreen(query: String) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            BasicText(PhoneFormat.format(e.number), style = IosType.footnote.copy(color = colors.secondaryLabel), maxLines = 1)
+                            BasicText(PhoneFormat.format(e.number), style = IosType.footnote.copy(color = colors.secondaryLabel).ltr(), maxLines = 1)
                         }
                         BasicText(Formats.callDate(e.date), style = IosType.callout.copy(color = colors.secondaryLabel))
                     }

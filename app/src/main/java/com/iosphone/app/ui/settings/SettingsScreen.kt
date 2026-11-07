@@ -1,5 +1,8 @@
 package com.iosphone.app.ui.settings
 
+import androidx.compose.runtime.mutableStateOf
+import com.iosphone.app.util.LocaleHelper
+import android.app.Activity
 import android.content.Context
 import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.iosRow
@@ -130,6 +133,28 @@ fun SettingsScreen() {
                     ),
                     selected = AppSettings.appearance,
                     onSelect = { AppSettings.setAppearance(it) },
+                )
+            }
+
+            val langContext = LocalContext.current
+            var lang by remember { mutableStateOf(LocaleHelper.get(langContext)) }
+            val langCodes = listOf("system", "en", "ar")
+            SectionHeader(stringResource(R.string.language))
+            Card {
+                Segmented(
+                    options = listOf(
+                        stringResource(R.string.appearance_system),
+                        "English",
+                        "العربية",
+                    ),
+                    selected = langCodes.indexOf(lang).coerceAtLeast(0),
+                    onSelect = { i ->
+                        if (langCodes[i] != lang) {
+                            lang = langCodes[i]
+                            LocaleHelper.set(langContext, lang)
+                            (langContext as? Activity)?.recreate()
+                        }
+                    },
                 )
             }
 

@@ -1,5 +1,6 @@
 package com.iosphone.app.ui.theme
 
+import androidx.compose.ui.text.style.TextDirection
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -86,6 +87,12 @@ val IosDark = IosColors(
 )
 
 val LocalIosColors = staticCompositionLocalOf { IosLight }
+
+/** Phone numbers always read left-to-right, even inside a right-to-left (Arabic) layout. */
+fun TextStyle.ltr(): TextStyle = copy(textDirection = TextDirection.Ltr)
+
+/** Names follow the direction of their own script (Arabic names right-to-left, Latin left-to-right). */
+fun TextStyle.autoDir(): TextStyle = copy(textDirection = TextDirection.Content)
 
 object IosType {
     private val base = FontFamily.SansSerif

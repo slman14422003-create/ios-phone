@@ -1,5 +1,6 @@
 package com.iosphone.app.ui.contacts
 
+import com.iosphone.app.ui.theme.ltr
 import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
@@ -125,10 +126,10 @@ private fun ContactDetailContent(contact: Contact) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            BasicText(phone.label, style = IosType.footnote.copy(color = colors.secondaryLabel))
+                            BasicText(labelText(phone.label), style = IosType.footnote.copy(color = colors.secondaryLabel))
                             BasicText(
                                 PhoneFormat.format(phone.number),
-                                style = IosType.body.copy(color = if (colors.dark) colors.label else colors.tint),
+                                style = IosType.body.copy(color = if (colors.dark) colors.label else colors.tint).ltr(),
                             )
                         }
                         if (index == 0) {

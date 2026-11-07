@@ -99,6 +99,7 @@
     <string name="incoming_channel">Incoming calls</string>
     <string name="settings_title">Settings</string>
     <string name="appearance">Appearance</string>
+    <string name="language">Language</string>
     <string name="appearance_system">System</string>
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
