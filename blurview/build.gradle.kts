@@ -1,4 +1,3 @@
-// BlurView 4.0 (https://github.com/Dimezis/BlurView, Apache-2.0) — copied from BlurView-master.zip
 plugins {
     id("com.android.library")
 }
