@@ -166,7 +166,7 @@ fun KeypadScreen(initialNumber: String?) {
     fun sendUssd(code: String) {
         codeText = context.getString(R.string.ussd_running)
         Ussd.run(context, code, simSub) { ok, text ->
-            codeText = if (ok && text.isNotBlank()) text else context.getString(R.string.ussd_failed)
+            codeText = if (ok && text.isNotBlank()) text else context.getString(R.string.ussd_failed) + if (text.isNotBlank()) "\n($text)" else ""
         }
     }
 

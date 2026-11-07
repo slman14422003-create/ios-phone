@@ -450,7 +450,7 @@ fun SupplementaryScreen() {
         busy = true
         Ussd.run(context, code, subId) { ok, text ->
             busy = false
-            result = UssdResult(ok, text)
+            result = UssdResult(ok, if (ok) text else context.getString(R.string.ussd_failed) + "\n($text)")
         }
     }
 
@@ -522,7 +522,7 @@ fun SupplementaryScreen() {
             ) {
                 val r = result
                 BasicText(
-                    if (busy || r == null) stringResource(R.string.ussd_running) else if (r.ok) r.text else stringResource(R.string.ussd_failed),
+                    if (busy || r == null) stringResource(R.string.ussd_running) else r.text,
                     style = IosType.body.copy(color = colors.label),
                 )
                 if (!busy) {
