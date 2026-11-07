@@ -1,6 +1,7 @@
 package com.iosphone.app.ui.settings
 
 import android.content.Context
+import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.iosRow
 import com.iosphone.app.telecom.SimManager
 import com.iosphone.app.data.LocalAppData
@@ -272,11 +273,11 @@ private fun CallBgCard(cfg: CallBgSettings, incoming: Boolean) {
                 Spacer(Modifier.weight(1f))
                 if (incoming) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        PreviewButton(Icons.Filled.CallEnd, Color(0xFFFF3B30))
-                        PreviewButton(Icons.Filled.Call, Color(0xFF34C759))
+                        PreviewButton(IosIcons.CallEnd, Color(0xFFFF3B30))
+                        PreviewButton(IosIcons.Phone, Color(0xFF34C759))
                     }
                 } else {
-                    PreviewButton(Icons.Filled.CallEnd, Color(0xFFFF3B30))
+                    PreviewButton(IosIcons.CallEnd, Color(0xFFFF3B30))
                 }
             }
         }

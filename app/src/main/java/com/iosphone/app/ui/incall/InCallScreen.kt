@@ -17,6 +17,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.graphicsLayer
 import com.iosphone.app.data.AppSettings
 import com.iosphone.app.telecom.CallRecorder
+import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.CallBackdrop
 import com.iosphone.app.ui.common.PadKey
 import androidx.compose.foundation.Image
@@ -237,7 +238,7 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                                 SmallAction(Icons.Filled.Alarm, stringResource(R.string.remind_me)) {
                                     CallManager.primary()?.let { CallManager.reject(it) }
                                 }
-                                SmallAction(Icons.Filled.ChatBubble, stringResource(R.string.message)) {
+                                SmallAction(IosIcons.Message, stringResource(R.string.message)) {
                                     val number = shown.number
                                     CallManager.primary()?.let { CallManager.reject(it) }
                                     onMessage(number)
@@ -245,10 +246,10 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                             }
                             Spacer(Modifier.height(36.dp))
                             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                BigAction(Icons.Filled.CallEnd, stringResource(R.string.decline), callRed) {
+                                BigAction(IosIcons.CallEnd, stringResource(R.string.decline), callRed) {
                                     CallManager.primary()?.let { CallManager.reject(it) }
                                 }
-                                BigAction(Icons.Filled.Call, stringResource(R.string.accept), callGreen) {
+                                BigAction(IosIcons.Phone, stringResource(R.string.accept), callGreen) {
                                     CallManager.primary()?.let { CallManager.answer(it) }
                                 }
                             }
@@ -279,7 +280,7 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.weight(1f))
                                 Box(Modifier.size(76.dp).pressable { CallManager.primary()?.let { CallManager.hangup(it) } }.background(callRed, CircleShape), contentAlignment = Alignment.Center) {
-                                    Image(Icons.Filled.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
+                                    Image(IosIcons.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
                                 }
                                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                                     BasicText(
@@ -344,7 +345,7 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
                                                 }.background(callRed, CircleShape),
                                                 contentAlignment = Alignment.Center,
                                             ) {
-                                                Image(Icons.Filled.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
+                                                Image(IosIcons.CallEnd, null, Modifier.size(34.dp), colorFilter = ColorFilter.tint(Color.White))
                                             }
                                             Spacer(Modifier.height(8.dp))
                                             BasicText(stringResource(R.string.end), style = IosType.caption.copy(color = Color.White))

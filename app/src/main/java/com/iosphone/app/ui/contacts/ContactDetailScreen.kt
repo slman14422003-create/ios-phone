@@ -36,6 +36,7 @@ import com.iosphone.app.R
 import com.iosphone.app.data.Contact
 import com.iosphone.app.data.ContactsWriter
 import com.iosphone.app.data.LocalAppData
+import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.Avatar
 import com.iosphone.app.ui.common.GlassIconButton
 import com.iosphone.app.ui.common.GlassTextButton
@@ -105,11 +106,11 @@ private fun ContactDetailContent(contact: Contact) {
             Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 22.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            ActionCircle(Icons.Filled.ChatBubble, first != null) {
+            ActionCircle(IosIcons.Message, first != null) {
                 runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + first!!.number))) }
             }
-            ActionCircle(Icons.Filled.Call, first != null) { call(first!!.number) }
-            ActionCircle(Icons.Filled.GraphicEq, true) { nav.push(Route.Recordings(contact.id)) }
+            ActionCircle(IosIcons.Phone, first != null) { call(first!!.number) }
+            ActionCircle(IosIcons.Recordings, true) { nav.push(Route.Recordings(contact.id)) }
             ActionCircle(Icons.Filled.Mail, contact.emails.isNotEmpty()) {
                 runCatching {
                     context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:" + contact.emails.first().address)))

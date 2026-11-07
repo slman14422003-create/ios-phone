@@ -70,6 +70,7 @@ import com.iosphone.app.data.AppSettings
 import com.iosphone.app.telecom.SimManager
 import androidx.compose.material.icons.filled.SimCard
 import com.iosphone.app.data.LocalAppData
+import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.PadKey
 import com.iosphone.app.domain.DialSuggest
 import com.iosphone.app.domain.Suggestion
@@ -359,7 +360,7 @@ private fun CallButton(size: Dp, onTap: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            imageVector = Icons.Filled.Call,
+            imageVector = IosIcons.Phone,
             contentDescription = null,
             colorFilter = ColorFilter.tint(Color.White),
             modifier = Modifier.size(36.dp),
