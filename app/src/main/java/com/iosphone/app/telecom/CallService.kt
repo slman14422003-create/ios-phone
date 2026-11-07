@@ -150,7 +150,7 @@ class CallService : InCallService() {
     private fun openUi() {
         val intent = Intent(this, InCallActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-        startActivity(intent)
+        runCatching { startActivity(intent) }
     }
 
     private fun showIncoming(call: Call) {
