@@ -160,22 +160,6 @@ fun KeypadScreen(initialNumber: String?) {
     }
 
     var codeText by remember { mutableStateOf<String?>(null) }
-    var pendingCode by remember { mutableStateOf<String?>(null) }
-    val simSub = activeSim?.subId ?: -1
-
-    fun sendUssd(code: String) {
-        codeText = context.getString(R.string.ussd_running)
-        Ussd.run(context, code, simSub) { ok, text ->
-            codeText = if (ok && text.isNotBlank()) text else context.getString(R.string.ussd_failed) + if (text.isNotBlank()) "\n($text)" else ""
-        }
-    }
-
-    val codePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val code = pendingCode
-        pendingCode = null
-        if (granted && code != null) sendUssd(code) else if (code != null) codeText = context.getString(R.string.ussd_failed)
-    }
-
     fun runCode(code: String) {
         if (code == "*#06#") {
             val imei = DialCodes.imei(context)
@@ -183,12 +167,7 @@ fun KeypadScreen(initialNumber: String?) {
             return
         }
         if (DialCodes.secretCode(context, code)) return
-        if (Ussd.allowed(context)) {
-            sendUssd(code)
-        } else {
-            pendingCode = code
-            codePermission.launch(Manifest.permission.CALL_PHONE)
-        }
+        caller(code)
     }
 
     fun press(digit: String) {
@@ -201,10 +180,8 @@ fun KeypadScreen(initialNumber: String?) {
         if (raw.isEmpty()) {
             val last = data.calls.firstOrNull { it.isOutgoing }
             if (last != null) raw = PhoneFormat.digits(last.number)
-        } else if (DialCodes.isCode(raw)) {
-            runCode(raw)
         } else {
-            caller(raw)
+            runCode(raw)
         }
     }
 
