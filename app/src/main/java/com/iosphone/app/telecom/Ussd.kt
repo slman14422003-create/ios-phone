@@ -13,10 +13,18 @@ object Ussd {
 
     fun run(context: Context, code: String, subId: Int, onResult: (Boolean, String) -> Unit) {
         if (!allowed(context)) {
-            onResult(false, "")
+            onResult(false, "permission")
             return
         }
-        val started = runCatching {
+        attempt(context, code, subId, onResult)
+    }
+
+    private fun attempt(context: Context, code: String, subId: Int, onResult: (Boolean, String) -> Unit) {
+        val retry = subId >= 0
+        fun fail(reason: String) {
+            if (retry) attempt(context, code, -1, onResult) else onResult(false, reason)
+        }
+        val error = runCatching {
             val base = context.getSystemService(TelephonyManager::class.java)
             val tm = if (subId >= 0) base.createForSubscriptionId(subId) else base
             @Suppress("MissingPermission")
@@ -28,12 +36,12 @@ object Ussd {
                     }
 
                     override fun onReceiveUssdResponseFailed(telephonyManager: TelephonyManager, request: String, failureCode: Int) {
-                        onResult(false, "")
+                        fail("code $failureCode")
                     }
                 },
                 Handler(Looper.getMainLooper()),
             )
-        }.isSuccess
-        if (!started) onResult(false, "")
+        }.exceptionOrNull()
+        if (error != null) fail(error.javaClass.simpleName)
     }
 }
