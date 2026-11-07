@@ -98,7 +98,7 @@ fun PermissionGate(
     val context = LocalContext.current
     val colors = Ios.colors
     val data = LocalAppData.current
-    val version = data.version
+    val version = data.version + data.resumeCount * 1000
     var granted by remember(version) {
         mutableStateOf(context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED)
     }

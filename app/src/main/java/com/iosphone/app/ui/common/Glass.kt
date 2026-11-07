@@ -118,7 +118,7 @@ fun GlassBox(
     Box(
         modifier = modifier
             .shadow(
-                elevation = 16.dp,
+                elevation = 8.dp,
                 shape = shape,
                 clip = false,
                 ambientColor = Color.Black.copy(alpha = if (c.dark) 0.35f else 0.08f),
@@ -133,7 +133,7 @@ fun GlassBox(
             AndroidView(
                 factory = { ctx ->
                     BlurView(ctx).also { v ->
-                        v.setupWith(target, 2f, false).setBlurRadius(32f)
+                        v.setupWith(target, 1f, false).setBlurRadius(26f)
                         v.setOverlayColor(tint)
                     }
                 },
@@ -150,13 +150,8 @@ fun GlassBox(
 fun Modifier.iosRow(onClick: () -> Unit): Modifier = composed {
     var pressed by remember { mutableStateOf(false) }
     val tint = Ios.colors.fill
-    val bg = animateColorAsState(
-        targetValue = if (pressed) tint else Color.Transparent,
-        animationSpec = tween(if (pressed) 40 else 320),
-        label = "rowPress",
-    )
     this
-        .drawBehind { drawRect(bg.value) }
+        .drawBehind { if (pressed) drawRect(tint) }
         .pointerInput(onClick) {
             detectTapGestures(
                 onPress = {

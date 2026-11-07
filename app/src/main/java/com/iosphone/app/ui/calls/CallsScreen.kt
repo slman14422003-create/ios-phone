@@ -132,7 +132,7 @@ private fun CallsContent() {
         )
     }
     val favorites = remember(data.contacts) { data.contacts.filter { it.starred && it.phones.isNotEmpty() } }
-    var isDefault by remember(data.version) { mutableStateOf(DefaultDialer.isDefault(context)) }
+    var isDefault by remember(data.resumeCount) { mutableStateOf(DefaultDialer.isDefault(context)) }
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         isDefault = DefaultDialer.isDefault(context)
     }

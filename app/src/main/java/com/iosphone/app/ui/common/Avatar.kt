@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -54,6 +55,7 @@ fun initialsOf(name: String): String {
 fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val colors = Ios.colors
+    val targetPx = with(LocalDensity.current) { size.roundToPx() }
     val bitmap by produceState<ImageBitmap?>(AvatarCache.get(photoUri), photoUri) {
         if (photoUri == null) {
             value = null
@@ -64,8 +66,14 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
             } else {
                 val loaded = withContext(Dispatchers.IO) {
                     runCatching {
-                        context.contentResolver.openInputStream(Uri.parse(photoUri))?.use {
-                            BitmapFactory.decodeStream(it)
+                        val uri = Uri.parse(photoUri)
+                        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                        var sample = 1
+                        while (bounds.outWidth / (sample * 2) >= targetPx && bounds.outHeight / (sample * 2) >= targetPx) sample *= 2
+                        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+                        context.contentResolver.openInputStream(uri)?.use {
+                            BitmapFactory.decodeStream(it, null, opts)
                         }?.asImageBitmap()
                     }.getOrNull()
                 }

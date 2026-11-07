@@ -129,7 +129,7 @@ object ContactsRepository {
             }
         }
         val collator = Collator.getInstance()
-        out.sortWith(Comparator { a, b -> collator.compare(a.name, b.name) })
-        out
+        val keyed = out.map { collator.getCollationKey(it.name) to it }.sortedWith(compareBy { it.first })
+        keyed.map { it.second }
     }
 }

@@ -34,3 +34,10 @@
 - Fix: SimPickerHost is now a normal overlay (BackHandler, navigationBarsPadding). MainActivity adds a full-size transparent ComposeView above the glass bar to host it; ContactsShell hosts it inline.
 - Edges: ui/common/EdgeScrims.kt adds fades under the status bar and the gesture area (used in PhoneContent and ContactsShell); navigation bar contrast enforcement turned off in both activities.
 - Duplicate SIM subtitle hidden when the carrier name equals the slot label.
+
+## Performance pass
+- Biggest cost: each BlurView blurred a full-screen node every frame. RenderNodeBlurController now crops the node to the BlurView bounds when it has no scale or rotation (target drawn shifted into it). Glass blur uses scale 1 and radius 26, shadow elevation 8.
+- Data: AppData no longer reloads on every resume. ContentObservers on contacts and call log trigger a debounced refresh, resume refreshes only after 2 minutes or a permission change, loads run in parallel, unchanged lists are not republished, contacts sorted with precomputed collation keys. resumeCount drives resume-time UI checks (settings statuses, default dialer, permission gate).
+- Recomposition: index blur and dim, and menu blur and dim, are read inside graphicsLayer (no per-frame recomposition). Index letter changes no longer recompose the contact list. Tab switch is a short crossfade only. animateItem removed from contacts. iosRow no longer allocates animation state per row.
+- Images: avatars decoded at display size.
+- Not measured on a device: report which screen still lags.
