@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import android.view.HapticFeedbackConstants
 import com.iosphone.app.ui.common.ScreenBlur
+import com.iosphone.app.ui.common.SimPicker
 import com.iosphone.app.ui.common.EdgeScrims
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -42,6 +43,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -163,7 +165,7 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
 @Composable
 fun PhoneChrome(vm: ShellViewModel) {
     AnimatedVisibility(
-        visible = vm.nav.stack.isEmpty(),
+        visible = vm.nav.stack.isEmpty() && SimPicker.number == null,
         enter = fadeIn(tween(220)) + slideInVertically(tween(300, easing = IosEase)) { it / 2 },
         exit = fadeOut(tween(140)) + slideOutVertically(tween(240, easing = IosEase)) { it / 2 },
     ) {
@@ -298,7 +300,9 @@ private fun TabPill(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier =
                     }
                     .padding(5.dp)
                     .clip(CircleShape)
-                    .background(if (dragging) colors.selection.copy(alpha = 0.7f) else colors.selection),
+                    // Transparent glass lens: only a faint tint + hairline, the blurred content shows through.
+                    .background(if (colors.dark) Color.White.copy(alpha = if (dragging) 0.12f else 0.07f) else Color.Black.copy(alpha = if (dragging) 0.08f else 0.05f))
+                    .border(0.5.dp, if (colors.dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.08f), CircleShape),
             )
         }
         Row(Modifier.fillMaxSize()) {

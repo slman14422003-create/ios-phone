@@ -98,7 +98,7 @@ fun Modifier.menuSurface(shape: Shape): Modifier = composed {
             spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.22f),
         )
         .clip(shape)
-        .background(if (c.dark) Color(0xF2262628) else Color(0xF5F7F7F9))
+        .background(if (c.dark) Color(0xC7303034) else Color(0xCCF7F7F9))
         .border(0.5.dp, c.glassBorder, shape)
 }
 
@@ -114,6 +114,8 @@ fun GlassBox(
     shape: Shape,
     modifier: Modifier = Modifier,
     contentAlignment: Alignment = Alignment.TopStart,
+    blurRadius: Float = 26f,
+    overlay: Color? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val c = Ios.colors
@@ -132,11 +134,11 @@ fun GlassBox(
         contentAlignment = contentAlignment,
     ) {
         if (target != null) {
-            val tint = c.blurTint.toArgb()
+            val tint = (overlay ?: c.blurTint).toArgb()
             AndroidView(
                 factory = { ctx ->
                     BlurView(ctx).also { v ->
-                        v.setupWith(target, 1f, false).setBlurRadius(26f)
+                        v.setupWith(target, 1f, false).setBlurRadius(blurRadius)
                         v.setOverlayColor(tint)
                     }
                 },
@@ -144,7 +146,7 @@ fun GlassBox(
                 modifier = Modifier.matchParentSize(),
             )
         } else {
-            Box(Modifier.matchParentSize().background(c.glass))
+            Box(Modifier.matchParentSize().background(overlay ?: c.glass))
         }
         content()
     }

@@ -7,6 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import com.iosphone.app.ui.common.SimPicker
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -38,7 +45,13 @@ fun ContactsShell() {
     CompositionLocalProvider(LocalAppData provides data, LocalNav provides nav) {
         RequestPermissionsOnce()
         Box(Modifier.fillMaxSize().background(colors.background)) {
-            ContactsScreen(query)
+            val sheetBlur by animateFloatAsState(if (SimPicker.number != null) 40f else 0f, tween(240), label = "simBlur")
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    renderEffect = if (sheetBlur > 0.5f) BlurEffect(sheetBlur, sheetBlur, TileMode.Clamp) else null
+                },
+            ) { ContactsScreen(query) }
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (SimPicker.number != null) 1f else 0f }.background(Color.Black.copy(alpha = 0.3f)))
             GlassSearchField(
                 value = query,
                 onChange = { query = it },

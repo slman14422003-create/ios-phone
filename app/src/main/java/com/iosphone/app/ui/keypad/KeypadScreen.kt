@@ -163,7 +163,7 @@ fun KeypadScreen(initialNumber: String?) {
     fun runCode(code: String) {
         if (code == "*#06#") {
             val imei = DialCodes.imei(context)
-            if (imei == null) DialCodes.deviceInfo(context) else codeText = imei
+            if (imei == null) DialCodes.openImeiScreen(context) else codeText = imei
             return
         }
         if (DialCodes.secretCode(context, code)) return
