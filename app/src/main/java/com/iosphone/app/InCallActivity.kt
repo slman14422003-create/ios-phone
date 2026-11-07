@@ -3,6 +3,7 @@ package com.iosphone.app
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -10,11 +11,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import android.telecom.Call
 import com.iosphone.app.data.AppSettings
+import com.iosphone.app.util.LocaleHelper
 import com.iosphone.app.telecom.CallManager
 import com.iosphone.app.ui.incall.InCallScreen
 import com.iosphone.app.ui.theme.IosTheme
 
 class InCallActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppSettings.init(this)

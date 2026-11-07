@@ -1,5 +1,8 @@
 package com.iosphone.app.ui.calls
 
+import com.iosphone.app.ui.contacts.labelText
+import com.iosphone.app.ui.theme.ltr
+import com.iosphone.app.ui.theme.autoDir
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -293,9 +296,11 @@ private fun CallRow(
 ) {
     val colors = Ios.colors
     val e = g.first
-    val title = (contact?.name ?: e.name ?: PhoneFormat.format(e.number).ifEmpty { "Unknown" }) +
+    val unknownLabel = stringResource(R.string.unknown)
+    val isNumberTitle = contact?.name == null && e.name == null
+    val title = (contact?.name ?: e.name ?: PhoneFormat.format(e.number).ifEmpty { unknownLabel }) +
         if (g.count > 1) " (" + g.count + ")" else ""
-    val label = contact?.phones?.firstOrNull { PhoneFormat.key(it.number) == PhoneFormat.key(e.number) }?.label ?: "mobile"
+    val label = labelText(contact?.phones?.firstOrNull { PhoneFormat.key(it.number) == PhoneFormat.key(e.number) }?.label ?: "mobile")
     val icon = when {
         e.isMissed -> Icons.AutoMirrored.Filled.CallMissed
         e.isOutgoing -> Icons.AutoMirrored.Filled.CallMade
@@ -318,7 +323,8 @@ private fun CallRow(
             Column(Modifier.weight(1f)) {
                 BasicText(
                     title,
-                    style = IosType.body.copy(color = if (e.isMissed) colors.red else colors.label, fontWeight = FontWeight.Medium),
+                    style = IosType.body.copy(color = if (e.isMissed) colors.red else colors.label, fontWeight = FontWeight.Medium)
+                        .let { if (isNumberTitle) it.ltr() else it.autoDir() },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

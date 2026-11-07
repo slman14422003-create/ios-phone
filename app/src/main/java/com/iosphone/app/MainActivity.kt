@@ -1,6 +1,7 @@
 package com.iosphone.app
 
 import android.content.Intent
+import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
@@ -14,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import com.iosphone.app.data.AppSettings
+import com.iosphone.app.util.LocaleHelper
 import com.iosphone.app.ui.common.LocalBlurTarget
 import com.iosphone.app.ui.common.SimPickerHost
 import com.iosphone.app.ui.shell.PhoneChrome
@@ -23,6 +25,10 @@ import com.iosphone.app.ui.theme.IosTheme
 import eightbitlab.com.blurview.BlurTarget
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
     private val vm: ShellViewModel by viewModels()
     private var dialNumber by mutableStateOf<String?>(null)
 

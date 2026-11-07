@@ -1,5 +1,8 @@
 package com.iosphone.app.ui.common
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.animateColorAsState
@@ -166,13 +169,17 @@ fun Modifier.iosRow(onClick: () -> Unit): Modifier = composed {
 
 fun Modifier.pressable(enabled: Boolean = true, pressedScale: Float = 0.93f, onClick: () -> Unit): Modifier = composed {
     var pressed by remember { mutableStateOf(false) }
-    val s by animateFloatAsState(
+    val s = animateFloatAsState(
         targetValue = if (pressed) pressedScale else 1f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
         label = "press",
     )
     this
-        .scale(s)
+        .graphicsLayer {
+            // read in the draw phase: no recomposition on every animation frame
+            scaleX = s.value
+            scaleY = s.value
+        }
         .pointerInput(enabled, onClick) {
             if (enabled) {
                 detectTapGestures(
@@ -254,7 +261,8 @@ fun GlassMenu(
     val density = LocalDensity.current
     val offset = with(density) { IntOffset(0, offsetY.roundToPx()) }
     val visible = remember { MutableTransitionState(false).apply { targetState = true } }
-    val origin = if (alignment == Alignment.BottomCenter) TransformOrigin(0.5f, 1f) else TransformOrigin(1f, 0f)
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val origin = if (alignment == Alignment.BottomCenter) TransformOrigin(0.5f, 1f) else TransformOrigin(if (rtl) 0f else 1f, 0f)
     Popup(
         alignment = alignment,
         offset = offset,

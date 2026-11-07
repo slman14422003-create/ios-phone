@@ -1,5 +1,6 @@
 package com.iosphone.app.ui.calls
 
+import com.iosphone.app.ui.theme.ltr
 import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
@@ -71,8 +72,8 @@ fun CallDetailScreen(number: String) {
             Avatar("", null, 140.dp)
             Spacer(Modifier.height(14.dp))
             BasicText(
-                PhoneFormat.format(number).ifEmpty { "Unknown" },
-                style = IosType.title1.copy(color = colors.label, textAlign = TextAlign.Center),
+                PhoneFormat.format(number).ifEmpty { stringResource(R.string.unknown) },
+                style = IosType.title1.copy(color = colors.label, textAlign = TextAlign.Center).ltr(),
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
         }

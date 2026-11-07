@@ -56,6 +56,10 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
     val context = LocalContext.current
     val colors = Ios.colors
     val targetPx = with(LocalDensity.current) { size.roundToPx() }
+    val avatarBrush = androidx.compose.runtime.remember(colors.avatarTop, colors.avatarBottom) {
+        Brush.verticalGradient(listOf(colors.avatarTop, colors.avatarBottom))
+    }
+    val initials = androidx.compose.runtime.remember(name) { initialsOf(name) }
     val bitmap by produceState<ImageBitmap?>(AvatarCache.get(photoUri), photoUri) {
         if (photoUri == null) {
             value = null
@@ -87,13 +91,13 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(Brush.verticalGradient(listOf(colors.avatarTop, colors.avatarBottom))),
+            .background(avatarBrush),
         contentAlignment = Alignment.Center,
     ) {
         if (bmp != null) {
             Image(bmp, null, Modifier.size(size), contentScale = ContentScale.Crop)
         } else {
-            val text = initialsOf(name)
+            val text = initials
             if (text.isEmpty()) {
                 Image(
                     Icons.Filled.Person,
