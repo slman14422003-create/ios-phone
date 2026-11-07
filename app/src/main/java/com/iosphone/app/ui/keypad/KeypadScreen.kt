@@ -5,6 +5,12 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
 import com.iosphone.app.ui.theme.ltr
 import android.content.ClipboardManager
+import com.iosphone.app.telecom.Ussd
+import com.iosphone.app.telecom.DialCodes
+import androidx.compose.ui.window.Dialog
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.Manifest
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -153,6 +159,38 @@ fun KeypadScreen(initialNumber: String?) {
         }
     }
 
+    var codeText by remember { mutableStateOf<String?>(null) }
+    var pendingCode by remember { mutableStateOf<String?>(null) }
+    val simSub = activeSim?.subId ?: -1
+
+    fun sendUssd(code: String) {
+        codeText = context.getString(R.string.ussd_running)
+        Ussd.run(context, code, simSub) { ok, text ->
+            codeText = if (ok && text.isNotBlank()) text else context.getString(R.string.ussd_failed)
+        }
+    }
+
+    val codePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val code = pendingCode
+        pendingCode = null
+        if (granted && code != null) sendUssd(code) else if (code != null) codeText = context.getString(R.string.ussd_failed)
+    }
+
+    fun runCode(code: String) {
+        if (code == "*#06#") {
+            val imei = DialCodes.imei(context)
+            if (imei == null) DialCodes.deviceInfo(context) else codeText = imei
+            return
+        }
+        if (DialCodes.secretCode(context, code)) return
+        if (Ussd.allowed(context)) {
+            sendUssd(code)
+        } else {
+            pendingCode = code
+            codePermission.launch(Manifest.permission.CALL_PHONE)
+        }
+    }
+
     fun press(digit: String) {
         KeyFeedback.press(digit)
         if (raw.length < 40) raw += digit
@@ -163,8 +201,27 @@ fun KeypadScreen(initialNumber: String?) {
         if (raw.isEmpty()) {
             val last = data.calls.firstOrNull { it.isOutgoing }
             if (last != null) raw = PhoneFormat.digits(last.number)
+        } else if (DialCodes.isCode(raw)) {
+            runCode(raw)
         } else {
             caller(raw)
+        }
+    }
+
+    codeText?.let { text ->
+        Dialog(onDismissRequest = { codeText = null }) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(colors.card).padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                BasicText(text, style = IosType.body.copy(color = colors.label).ltr())
+                Spacer(Modifier.height(16.dp))
+                BasicText(
+                    stringResource(R.string.done),
+                    style = IosType.headline.copy(color = colors.tint),
+                    modifier = Modifier.pressable(pressedScale = 0.95f) { codeText = null }.padding(8.dp),
+                )
+            }
         }
     }
 
