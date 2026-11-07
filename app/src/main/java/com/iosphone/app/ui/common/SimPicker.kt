@@ -1,5 +1,6 @@
 package com.iosphone.app.ui.common
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
@@ -28,7 +29,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,14 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import com.iosphone.app.R
 import com.iosphone.app.telecom.SimInfo
 import com.iosphone.app.ui.theme.Ios
@@ -83,63 +79,67 @@ fun SimPickerHost() {
     }
     if (!visible.currentState && !visible.targetState) return
 
-    Dialog(
-        onDismissRequest = { SimPicker.dismiss() },
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
-        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        SideEffect { window?.setDimAmount(0f) }
-        Box(Modifier.fillMaxSize()) {
-            AnimatedVisibility(visibleState = visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(180))) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.42f))
-                        .pointerInput(Unit) { detectTapGestures { SimPicker.dismiss() } },
-                )
-            }
-            AnimatedVisibility(
-                visibleState = visible,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = slideInVertically(spring(dampingRatio = 0.82f, stiffness = 380f)) { it } + fadeIn(tween(160)),
-                exit = slideOutVertically(tween(220)) { it } + fadeOut(tween(160)),
+    BackHandler(enabled = SimPicker.number != null) { SimPicker.dismiss() }
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visibleState = visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(180))) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.42f))
+                    .pointerInput(Unit) { detectTapGestures { SimPicker.dismiss() } },
+            )
+        }
+        AnimatedVisibility(
+            visibleState = visible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(spring(dampingRatio = 0.82f, stiffness = 380f)) { it } + fadeIn(tween(160)),
+            exit = slideOutVertically(tween(220)) { it } + fadeOut(tween(160)),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 10.dp, top = 12.dp)
+                    .pointerInput(Unit) { detectTapGestures { } },
             ) {
-                Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 12.dp)) {
-                    Column(Modifier.fillMaxWidth().menuSurface(RoundedCornerShape(28.dp))) {
-                        BasicText(
-                            stringResource(R.string.choose_sim),
-                            style = IosType.footnote.copy(color = colors.secondaryLabel, textAlign = TextAlign.Center),
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
-                        )
-                        lastSims.forEachIndexed { index, sim ->
-                            Hairline(0.dp)
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(66.dp)
-                                    .pressable(pressedScale = 0.98f) {
-                                        placeCall(context, lastNumber, sim.handle)
-                                        SimPicker.dismiss()
-                                    }
-                                    .padding(horizontal = 20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
-                                    Modifier.size(40.dp).background(colors.tint, CircleShape),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Image(Icons.Filled.SimCard, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Color.White))
+                Column(Modifier.fillMaxWidth().menuSurface(RoundedCornerShape(28.dp))) {
+                    BasicText(
+                        stringResource(R.string.choose_sim),
+                        style = IosType.footnote.copy(color = colors.secondaryLabel, textAlign = TextAlign.Center),
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                    )
+                    lastSims.forEach { sim ->
+                        Hairline(0.dp)
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(66.dp)
+                                .pressable(pressedScale = 0.98f) {
+                                    placeCall(context, lastNumber, sim.handle)
+                                    SimPicker.dismiss()
                                 }
-                                Spacer(Modifier.width(14.dp))
-                                Column(Modifier.weight(1f)) {
+                                .padding(horizontal = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier.size(40.dp).background(colors.tint, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Image(Icons.Filled.SimCard, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Color.White))
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                val extra = sim.number?.let { "  ·  " + PhoneFormat.format(it) }.orEmpty()
+                                val slotText = stringResource(R.string.sim_n, sim.slot + 1)
+                                BasicText(
+                                    if (sim.label == slotText) slotText else sim.label,
+                                    style = IosType.body.copy(color = colors.label, fontWeight = FontWeight.SemiBold),
+                                    maxLines = 1,
+                                )
+                                if (sim.label != slotText || extra.isNotEmpty()) {
                                     BasicText(
-                                        sim.label,
-                                        style = IosType.body.copy(color = colors.label, fontWeight = FontWeight.SemiBold),
-                                        maxLines = 1,
-                                    )
-                                    val number = sim.number?.let { "  ·  " + PhoneFormat.format(it) }.orEmpty()
-                                    BasicText(
-                                        stringResource(R.string.sim_n, sim.slot + 1) + number,
+                                        slotText + extra,
                                         style = IosType.footnote.copy(color = colors.secondaryLabel),
                                         maxLines = 1,
                                     )
@@ -147,20 +147,20 @@ fun SimPickerHost() {
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(58.dp)
-                            .menuSurface(RoundedCornerShape(29.dp))
-                            .pressable(pressedScale = 0.97f) { SimPicker.dismiss() },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        BasicText(
-                            stringResource(R.string.cancel),
-                            style = IosType.headline.copy(color = colors.tint, fontWeight = FontWeight.SemiBold),
-                        )
-                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(58.dp)
+                        .menuSurface(RoundedCornerShape(29.dp))
+                        .pressable(pressedScale = 0.97f) { SimPicker.dismiss() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    BasicText(
+                        stringResource(R.string.cancel),
+                        style = IosType.headline.copy(color = colors.tint, fontWeight = FontWeight.SemiBold),
+                    )
                 }
             }
         }

@@ -28,3 +28,9 @@
 - Lock screen: new permissions (READ_PHONE_NUMBERS, BLUETOOTH_CONNECT, WAKE_LOCK, VIBRATE, MODIFY_AUDIO_SETTINGS, DISABLE_KEYGUARD, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, voicemail), ProximityLock wake lock during earpiece calls, public notification visibility, Settings rows for full-screen intent, battery optimization and notifications with live status.
 - Stability: PhoneApp crash logger (filesDir/crash.log), lint no longer aborts release builds, packaging excludes, profileinstaller, lifecycle-process, startup, LeakCanary in debug only, extra proguard keep rules.
 - Not verified by a local build: run the GitHub Actions workflow.
+
+## SIM sheet position and screen edges
+- Cause: the SIM sheet lived in a Dialog window where navigation bar insets were not applied, so it dropped below the screen.
+- Fix: SimPickerHost is now a normal overlay (BackHandler, navigationBarsPadding). MainActivity adds a full-size transparent ComposeView above the glass bar to host it; ContactsShell hosts it inline.
+- Edges: ui/common/EdgeScrims.kt adds fades under the status bar and the gesture area (used in PhoneContent and ContactsShell); navigation bar contrast enforcement turned off in both activities.
+- Duplicate SIM subtitle hidden when the carrier name equals the slot label.

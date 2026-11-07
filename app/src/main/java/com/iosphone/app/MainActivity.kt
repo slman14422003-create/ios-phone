@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import com.iosphone.app.data.AppSettings
 import com.iosphone.app.ui.common.LocalBlurTarget
+import com.iosphone.app.ui.common.SimPickerHost
 import com.iosphone.app.ui.shell.PhoneChrome
 import com.iosphone.app.ui.shell.PhoneContent
 import com.iosphone.app.ui.shell.ShellViewModel
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppSettings.init(this)
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
         dialNumber = numberFrom(intent)
         if (dialNumber != null) showKeypad()
 
@@ -51,6 +53,13 @@ class MainActivity : ComponentActivity() {
         root.addView(
             chrome,
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM),
+        )
+        val overlay = ComposeView(this).apply {
+            setContent { IosTheme(syncSystemBars = true) { SimPickerHost() } }
+        }
+        root.addView(
+            overlay,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
         setContentView(root)
     }

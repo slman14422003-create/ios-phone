@@ -13,6 +13,7 @@ class ContactsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppSettings.init(this)
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
         setContent {
             IosTheme(syncSystemBars = true) { ContactsShell() }
         }
