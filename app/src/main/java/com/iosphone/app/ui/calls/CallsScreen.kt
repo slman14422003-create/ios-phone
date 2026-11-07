@@ -59,6 +59,7 @@ import com.iosphone.app.data.CallEntry
 import com.iosphone.app.data.CallLogRepository
 import com.iosphone.app.data.Contact
 import com.iosphone.app.data.LocalAppData
+import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.Avatar
 import com.iosphone.app.ui.common.DefaultDialer
 import com.iosphone.app.ui.common.GlassIconButton
@@ -168,12 +169,12 @@ private fun CallsContent() {
                         expanded = menu,
                         onDismiss = { menu = false },
                         items = listOf(
-                            MenuItem(allCallsLabel, checked = filter == 0) { filter = 0 },
-                            MenuItem(missedLabel, checked = filter == 1) { filter = 1 },
-                            MenuItem(outgoingLabel, checked = filter == 2) { filter = 2 },
-                            MenuItem(incomingLabel, checked = filter == 3) { filter = 3 },
-                            MenuItem(voicemailLabel, icon = Icons.Filled.Voicemail) { nav.push(Route.Voicemail) },
-                            MenuItem(recordingsLabel, icon = Icons.Filled.GraphicEq) { nav.push(Route.Recordings(null)) },
+                            MenuItem(allCallsLabel, icon = IosIcons.AllCalls, checked = filter == 0) { filter = 0 },
+                            MenuItem(missedLabel, icon = IosIcons.Missed, checked = filter == 1) { filter = 1 },
+                            MenuItem(outgoingLabel, icon = IosIcons.Outgoing, checked = filter == 2) { filter = 2 },
+                            MenuItem(incomingLabel, icon = IosIcons.Incoming, checked = filter == 3) { filter = 3 },
+                            MenuItem(voicemailLabel, icon = IosIcons.Voicemail) { nav.push(Route.Voicemail) },
+                            MenuItem(recordingsLabel, icon = IosIcons.Recordings) { nav.push(Route.Recordings(null)) },
                         ),
                     )
                 }

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.iosphone.app.R
 import com.iosphone.app.data.ContactsWriter
 import com.iosphone.app.data.LocalAppData
+import com.iosphone.app.ui.common.IosIcons
 import com.iosphone.app.ui.common.Avatar
 import com.iosphone.app.ui.common.GlassIconButton
 import com.iosphone.app.ui.common.Hairline
@@ -85,14 +86,14 @@ fun CallDetailScreen(number: String) {
                 }.glass(CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(Icons.Filled.ChatBubble, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(colors.label))
+                Image(IosIcons.Message, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(colors.label))
             }
             Spacer(Modifier.width(28.dp))
             Box(
                 Modifier.size(60.dp).pressable { call(number) }.glass(CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(Icons.Filled.Call, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(colors.label))
+                Image(IosIcons.Phone, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(colors.label))
             }
         }
         if (history.isNotEmpty()) {
