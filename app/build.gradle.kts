@@ -12,21 +12,18 @@ android {
         applicationId = "com.iosphone.app"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1)
         versionName = "1.0.0"
     }
 
     signingConfigs {
-        create("releaseFallback") {
-            val ks = System.getenv("KEYSTORE_PATH")
-            if (ks != null && file(ks).exists()) {
-                storeFile = file(ks)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
-            } else {
-                initWith(signingConfigs.getByName("debug"))
-            }
+        // Fixed key (valid 30 years) so every build has the same signature
+        // and can be installed over the previous one without uninstalling.
+        create("release") {
+            storeFile = rootProject.file("keystore/release.jks")
+            storePassword = "iosphone2026"
+            keyAlias = "iosphone"
+            keyPassword = "iosphone2026"
         }
     }
 
@@ -35,7 +32,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("releaseFallback")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
