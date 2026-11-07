@@ -43,6 +43,7 @@ import com.iosphone.app.ui.common.Hairline
 import com.iosphone.app.ui.common.LocalNav
 import com.iosphone.app.ui.common.Route
 import com.iosphone.app.ui.common.glass
+import com.iosphone.app.ui.common.iosRow
 import com.iosphone.app.ui.common.pressable
 import com.iosphone.app.ui.common.rememberCaller
 import com.iosphone.app.ui.theme.Ios
@@ -240,7 +241,7 @@ private fun ActionCircle(icon: ImageVector, enabled: Boolean, onClick: () -> Uni
 fun ActionRow(text: String, destructive: Boolean = false, onClick: () -> Unit) {
     val colors = Ios.colors
     Box(
-        Modifier.fillMaxWidth().height(52.dp).clickable(onClick = onClick).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().height(52.dp).iosRow(onClick).padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
         BasicText(text, style = IosType.body.copy(color = if (destructive) colors.red else colors.tint))

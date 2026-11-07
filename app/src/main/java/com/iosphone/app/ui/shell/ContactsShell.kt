@@ -24,6 +24,7 @@ import com.iosphone.app.ui.common.LocalNav
 import com.iosphone.app.ui.common.Nav
 import com.iosphone.app.ui.common.RequestPermissionsOnce
 import com.iosphone.app.ui.common.RouteLayer
+import com.iosphone.app.ui.common.SimPickerHost
 import com.iosphone.app.ui.contacts.ContactsScreen
 import com.iosphone.app.ui.theme.Ios
 
@@ -48,6 +49,7 @@ fun ContactsShell() {
                     .padding(horizontal = 20.dp, vertical = 10.dp),
             )
             RouteLayer(nav)
+            SimPickerHost()
         }
     }
 }

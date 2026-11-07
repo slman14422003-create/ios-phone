@@ -67,6 +67,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iosphone.app.R
 import com.iosphone.app.data.AppSettings
+import com.iosphone.app.telecom.SimManager
+import androidx.compose.material.icons.filled.SimCard
 import com.iosphone.app.data.LocalAppData
 import com.iosphone.app.ui.common.PadKey
 import com.iosphone.app.domain.DialSuggest
@@ -129,7 +131,13 @@ fun KeypadScreen(initialNumber: String?) {
     val nav = LocalNav.current
     var raw by rememberSaveable { mutableStateOf("") }
     var pasteMenu by remember { mutableStateOf(false) }
-    val caller = rememberCaller()
+    val sims = remember(data.version) { SimManager.list(context) }
+    var simId by rememberSaveable { mutableStateOf("") }
+    var simMenu by remember { mutableStateOf(false) }
+    val activeSim = remember(sims, simId) {
+        SimManager.find(sims, simId) ?: SimManager.find(sims, AppSettings.defaultSim) ?: sims.firstOrNull()
+    }
+    val caller = rememberCaller { if (sims.size > 1) activeSim?.handle else null }
     val tones = remember { runCatching { ToneGenerator(AudioManager.STREAM_DTMF, 70) }.getOrNull() }
     DisposableEffect(Unit) { onDispose { tones?.release() } }
     LaunchedEffect(initialNumber) {
@@ -294,7 +302,21 @@ fun KeypadScreen(initialNumber: String?) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                Spacer(Modifier.size(keySize))
+                Box(Modifier.size(keySize), contentAlignment = Alignment.Center) {
+                    if (sims.size > 1 && activeSim != null) {
+                        SimChip(activeSim.slot + 1) { simMenu = true }
+                        GlassMenu(
+                            expanded = simMenu,
+                            onDismiss = { simMenu = false },
+                            alignment = Alignment.TopStart,
+                            offsetY = (-(sims.size * 46 + 28)).dp,
+                            width = 230.dp,
+                            items = sims.map { sim ->
+                                MenuItem(sim.label + "  ·  SIM " + (sim.slot + 1), checked = sim.id == activeSim.id) { simId = sim.id }
+                            },
+                        )
+                    }
+                }
                 Spacer(Modifier.size(gap))
                 CallButton(keySize, onTap = ::onCall)
                 Spacer(Modifier.size(gap))
@@ -310,6 +332,18 @@ fun KeypadScreen(initialNumber: String?) {
             }
             Spacer(Modifier.height(110.dp))
         }
+    }
+}
+
+@Composable
+private fun SimChip(number: Int, onClick: () -> Unit) {
+    val colors = Ios.colors
+    Column(
+        Modifier.pressable(pressedScale = 0.9f, onClick = onClick).padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Image(Icons.Filled.SimCard, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(colors.tint))
+        BasicText("SIM $number", style = IosType.caption.copy(color = colors.tint, fontWeight = FontWeight.SemiBold))
     }
 }
 

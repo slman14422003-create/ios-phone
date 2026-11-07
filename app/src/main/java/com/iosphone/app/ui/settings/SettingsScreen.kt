@@ -1,6 +1,15 @@
 package com.iosphone.app.ui.settings
 
 import android.content.Context
+import com.iosphone.app.ui.common.iosRow
+import com.iosphone.app.telecom.SimManager
+import com.iosphone.app.data.LocalAppData
+import androidx.compose.material.icons.filled.Check
+import android.provider.Settings
+import android.os.PowerManager
+import android.os.Build
+import android.content.Intent
+import android.app.NotificationManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -135,6 +144,64 @@ fun SettingsScreen() {
                 Hairline(0.dp)
                 ToggleRow(stringResource(R.string.key_haptics), AppSettings.keyHaptics) { AppSettings.setKeyHaptics(it) }
             }
+
+            val appData = LocalAppData.current
+            val ctx = LocalContext.current
+            val sims = remember(appData.version) { SimManager.list(ctx) }
+            if (sims.size > 1) {
+                SectionHeader(stringResource(R.string.sim_section))
+                Card {
+                    OptionRow(stringResource(R.string.ask_every_time), null, AppSettings.defaultSim.isEmpty()) {
+                        AppSettings.changeDefaultSim("")
+                    }
+                    sims.forEach { sim ->
+                        Hairline(0.dp)
+                        OptionRow(sim.label, stringResource(R.string.sim_n, sim.slot + 1), AppSettings.defaultSim == sim.id) {
+                            AppSettings.changeDefaultSim(sim.id)
+                        }
+                    }
+                }
+            }
+
+            SectionHeader(stringResource(R.string.lock_section))
+            val pkg = ctx.packageName
+            val fullScreenOk = remember(appData.version) {
+                if (Build.VERSION.SDK_INT >= 34) ctx.getSystemService(NotificationManager::class.java).canUseFullScreenIntent() else true
+            }
+            val batteryOk = remember(appData.version) {
+                (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(pkg)
+            }
+            val notifOk = remember(appData.version) { ctx.getSystemService(NotificationManager::class.java).areNotificationsEnabled() }
+            Card {
+                StatusRow(stringResource(R.string.fullscreen_intent), fullScreenOk) {
+                    val intent = if (Build.VERSION.SDK_INT >= 34) {
+                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$pkg"))
+                    } else {
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))
+                    }
+                    runCatching { ctx.startActivity(intent) }
+                }
+                Hairline(0.dp)
+                StatusRow(stringResource(R.string.battery_opt), batteryOk) {
+                    val ok = runCatching {
+                        ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$pkg")))
+                    }.isSuccess
+                    if (!ok) runCatching { ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+                }
+                Hairline(0.dp)
+                StatusRow(stringResource(R.string.notifications_title), notifOk) {
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, pkg),
+                        )
+                    }
+                }
+            }
+            BasicText(
+                stringResource(R.string.lock_footer),
+                style = IosType.footnote.copy(color = colors.secondaryLabel),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp),
+            )
 
             SectionHeader(stringResource(R.string.recording_section))
             Card {
@@ -285,6 +352,36 @@ private fun SliderRow(label: String, value: Float, onChange: (Float) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(label, style = IosType.body.copy(color = colors.label), modifier = Modifier.width(64.dp))
         IosSlider(value, onChange, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun OptionRow(title: String, subtitle: String?, selected: Boolean, onClick: () -> Unit) {
+    val colors = Ios.colors
+    Row(
+        Modifier.fillMaxWidth().height(56.dp).iosRow(onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            BasicText(title, style = IosType.body.copy(color = colors.label), maxLines = 1)
+            if (subtitle != null) BasicText(subtitle, style = IosType.footnote.copy(color = colors.secondaryLabel))
+        }
+        if (selected) Image(Icons.Filled.Check, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(colors.tint))
+    }
+}
+
+@Composable
+private fun StatusRow(title: String, ok: Boolean, onClick: () -> Unit) {
+    val colors = Ios.colors
+    Row(
+        Modifier.fillMaxWidth().height(52.dp).iosRow(onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(title, style = IosType.body.copy(color = colors.label), modifier = Modifier.weight(1f))
+        BasicText(
+            stringResource(if (ok) R.string.perm_allowed else R.string.perm_not_allowed),
+            style = IosType.body.copy(color = if (ok) colors.secondaryLabel else colors.red),
+        )
     }
 }
 

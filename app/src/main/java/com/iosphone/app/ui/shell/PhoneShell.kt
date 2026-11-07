@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import android.view.HapticFeedbackConstants
 import com.iosphone.app.ui.common.ScreenBlur
+import com.iosphone.app.ui.common.SimPickerHost
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
@@ -151,6 +152,7 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
             if (menuDim > 0.001f) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = menuDim)))
             }
+            SimPickerHost()
         }
     }
 }

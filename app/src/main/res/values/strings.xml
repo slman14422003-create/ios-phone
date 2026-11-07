@@ -62,6 +62,17 @@
     <string name="decline">Decline</string>
     <string name="accept">Accept</string>
     <string name="speaker">Speaker</string>
+    <string name="choose_sim">Choose a SIM to call from</string>
+    <string name="sim_n">SIM %1$d</string>
+    <string name="sim_section">Calls SIM</string>
+    <string name="ask_every_time">Ask every time</string>
+    <string name="lock_section">Lock screen &amp; reliability</string>
+    <string name="fullscreen_intent">Full-screen incoming calls</string>
+    <string name="battery_opt">Run in background</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="perm_allowed">Allowed</string>
+    <string name="perm_not_allowed">Not allowed</string>
+    <string name="lock_footer">Allow these so calls ring and appear on the lock screen even when the phone is idle.</string>
     <string name="record">Record</string>
     <string name="recording">Recording</string>
     <string name="call_recordings">Call Recordings</string>

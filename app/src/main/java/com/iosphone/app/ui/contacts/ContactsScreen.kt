@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import com.iosphone.app.ui.common.glass
+import com.iosphone.app.ui.common.iosRow
 import kotlin.math.exp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -183,7 +184,7 @@ private fun ContactList(query: String) {
                     stickyHeader(key = "h_$letter", contentType = "header") { SectionHeader(letter) }
                 }
                 items(people, key = { it.id }, contentType = { "contact" }) { c ->
-                    ContactRow(c, endInset = if (showIndex) IndexWidth - 4.dp else 0.dp) { nav.push(Route.ContactDetail(c.id)) }
+                    ContactRow(c, endInset = if (showIndex) IndexWidth - 4.dp else 0.dp, modifier = Modifier.animateItem()) { nav.push(Route.ContactDetail(c.id)) }
                 }
             }
             if (filtered.isEmpty() && data.loaded) {
@@ -239,7 +240,7 @@ private fun SectionHeader(letter: String) {
 }
 
 @Composable
-fun ContactRow(c: Contact, endInset: Dp = 0.dp, onClick: () -> Unit) {
+fun ContactRow(c: Contact, endInset: Dp = 0.dp, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = Ios.colors
     val text = remember(c.name, c.given, c.family) {
         buildAnnotatedString {
@@ -257,7 +258,7 @@ fun ContactRow(c: Contact, endInset: Dp = 0.dp, onClick: () -> Unit) {
             }
         }
     }
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Column(modifier.fillMaxWidth().iosRow(onClick)) {
         Row(
             Modifier.fillMaxWidth().height(56.dp).padding(start = 16.dp, end = 34.dp),
             verticalAlignment = Alignment.CenterVertically,
