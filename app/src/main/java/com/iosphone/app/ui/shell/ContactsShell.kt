@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.iosphone.app.data.LocalAppData
 import com.iosphone.app.data.rememberAppData
+import com.iosphone.app.ui.common.EdgeScrims
 import com.iosphone.app.ui.common.GlassSearchField
 import com.iosphone.app.ui.common.LocalNav
 import com.iosphone.app.ui.common.Nav
@@ -48,6 +49,7 @@ fun ContactsShell() {
                     .imePadding()
                     .padding(horizontal = 20.dp, vertical = 10.dp),
             )
+            EdgeScrims(if (nav.stack.isNotEmpty() && !colors.dark) colors.grouped else colors.background)
             RouteLayer(nav)
             SimPickerHost()
         }
