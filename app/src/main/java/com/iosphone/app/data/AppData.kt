@@ -64,7 +64,12 @@ class AppData {
         val canCalls = granted(context, Manifest.permission.READ_CALL_LOG)
         val (c, l) = coroutineScope {
             val cd = async {
-                if (canContacts) runCatching { ContactsRepository.load(context) }.getOrDefault(emptyList()) else emptyList()
+                if (canContacts) {
+                    runCatching { ContactsRepository.load(context) }.getOrDefault(emptyList())
+                        .let { all -> if (AppSettings.hideNoNumber) all.filter { it.phones.isNotEmpty() } else all }
+                } else {
+                    emptyList()
+                }
             }
             val ld = async {
                 if (canCalls) runCatching { CallLogRepository.load(context) }.getOrDefault(emptyList()) else emptyList()

@@ -17,13 +17,11 @@ android {
     }
 
     signingConfigs {
-        // Fixed key (valid 30 years) so every build has the same signature
-        // and can be installed over the previous one without uninstalling.
         create("release") {
             storeFile = rootProject.file("keystore/release.jks")
-            storePassword = "iosphone2026"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "iosphone2026"
             keyAlias = "iosphone"
-            keyPassword = "iosphone2026"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "iosphone2026"
         }
     }
 

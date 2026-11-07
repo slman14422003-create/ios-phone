@@ -83,7 +83,7 @@ fun CallDetailScreen(number: String) {
         ) {
             Box(
                 Modifier.size(60.dp).pressable {
-                    runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number"))) }
+                    runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null))) }
                 }.glass(CircleShape),
                 contentAlignment = Alignment.Center,
             ) {

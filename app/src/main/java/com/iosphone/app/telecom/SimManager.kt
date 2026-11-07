@@ -14,6 +14,7 @@ class SimInfo(
     val slot: Int,
     val label: String,
     val number: String?,
+    val subId: Int = -1,
 ) {
     val id: String get() = handle.componentName.flattenToString() + "/" + handle.id
 }
@@ -39,7 +40,7 @@ object SimManager {
                     ?: "SIM ${slot + 1}"
                 val number = account.address?.schemeSpecificPart?.takeIf { it.isNotBlank() }
                     ?: sub?.number?.takeIf { it.isNotBlank() }
-                result.add(SimInfo(handle, slot, label, number))
+                result.add(SimInfo(handle, slot, label, number, subId))
             }
             result.sortedBy { it.slot }
         }.getOrDefault(emptyList())

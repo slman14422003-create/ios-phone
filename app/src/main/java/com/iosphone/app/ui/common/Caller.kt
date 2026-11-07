@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
+import android.telephony.PhoneNumberUtils
+import android.telephony.TelephonyManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -21,12 +23,24 @@ import com.iosphone.app.telecom.SimManager
 
 const val VOICEMAIL = "voicemail"
 
+private fun roamingNumber(context: Context, number: String, handle: PhoneAccountHandle?): String {
+    if (!AppSettings.roamingAssist) return number
+    if (number.length < 6 || number.startsWith("+") || number.startsWith("00") || number.any { it == '*' || it == '#' }) return number
+    return runCatching {
+        val base = context.getSystemService(TelephonyManager::class.java)
+        val t = if (handle != null) base.createForPhoneAccountHandle(handle) ?: base else base
+        if (!t.isNetworkRoaming) return@runCatching number
+        val iso = t.simCountryIso.uppercase()
+        if (iso.isEmpty()) number else PhoneNumberUtils.formatNumberToE164(number, iso) ?: number
+    }.getOrDefault(number)
+}
+
 fun placeCall(context: Context, number: String, handle: PhoneAccountHandle? = null) {
     val tm = context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
     val uri = if (number == VOICEMAIL) {
         Uri.fromParts("voicemail", "", null)
     } else {
-        Uri.fromParts("tel", number, null)
+        Uri.fromParts("tel", roamingNumber(context, number, handle), null)
     }
     val extras = Bundle()
     if (handle != null) extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)

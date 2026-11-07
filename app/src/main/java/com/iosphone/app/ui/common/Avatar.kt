@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -52,7 +53,7 @@ fun initialsOf(name: String): String {
 }
 
 @Composable
-fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modifier) {
+fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modifier, shape: Shape = CircleShape) {
     val context = LocalContext.current
     val colors = Ios.colors
     val targetPx = with(LocalDensity.current) { size.roundToPx() }
@@ -90,7 +91,7 @@ fun Avatar(name: String, photoUri: String?, size: Dp, modifier: Modifier = Modif
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
+            .clip(shape)
             .background(avatarBrush),
         contentAlignment = Alignment.Center,
     ) {

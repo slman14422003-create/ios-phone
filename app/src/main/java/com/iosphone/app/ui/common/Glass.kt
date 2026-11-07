@@ -176,7 +176,6 @@ fun Modifier.pressable(enabled: Boolean = true, pressedScale: Float = 0.93f, onC
     )
     this
         .graphicsLayer {
-            // read in the draw phase: no recomposition on every animation frame
             scaleX = s.value
             scaleY = s.value
         }

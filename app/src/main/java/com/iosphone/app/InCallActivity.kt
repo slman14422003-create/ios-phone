@@ -41,7 +41,7 @@ class InCallActivity : ComponentActivity() {
                     onMessage = { number ->
                         runCatching {
                             startActivity(
-                                Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                             )
                         }
                     },

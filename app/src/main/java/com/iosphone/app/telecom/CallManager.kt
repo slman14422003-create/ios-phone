@@ -32,6 +32,7 @@ object CallManager {
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             if (state != Call.STATE_RINGING) service?.cancelIncoming()
+            service?.onStateEvent(state)
             service?.refreshProximity()
             service?.let {
                 if (state == Call.STATE_ACTIVE) CallRecorder.onActive(it, call)
@@ -118,7 +119,9 @@ object CallManager {
     }
 
     fun dtmf(call: Call, digit: Char) {
+        handler.removeCallbacksAndMessages(null)
+        runCatching { call.stopDtmfTone() }
         call.playDtmfTone(digit)
-        handler.postDelayed({ call.stopDtmfTone() }, 160)
+        handler.postDelayed({ runCatching { call.stopDtmfTone() } }, 140)
     }
 }

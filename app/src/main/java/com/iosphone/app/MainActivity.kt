@@ -40,8 +40,6 @@ class MainActivity : ComponentActivity() {
         dialNumber = numberFrom(intent)
         if (dialNumber != null) showKeypad()
 
-        // Two layers: all the scrolling content sits inside a BlurTarget, and the glass bar floats above it
-        // as a sibling so BlurView can blur whatever scrolls underneath.
         val root = FrameLayout(this)
         val target = BlurTarget(this)
         val content = ComposeView(this).apply {
