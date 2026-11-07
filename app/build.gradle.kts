@@ -2,67 +2,82 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("kotlin-parcelize")
 }
 
 android {
-    namespace = "com.iosphone.app"
+    namespace = "app.ios.messages"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.iosphone.app"
+        applicationId = "app.ios.messages"
         minSdk = 31
         targetSdk = 36
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1)
-        versionName = "1.0.0"
+        versionCode = 24
+        versionName = "3.4"
+        // SHA-256 of the release signing certificate. At start-up the app compares it with the
+        // certificate it is actually signed with; a re-signed / re-packaged copy locks itself.
+        // If you ever change release.jks, update this value (keytool -list -v -keystore release.jks).
+        buildConfigField("String", "CERT_SHA256", "\"C16DDD8ADAFDEC27F547A8126F22183F2E1D1E3E76439DCABCB2A71B96EF938A\"")
     }
 
     signingConfigs {
         create("release") {
-            storeFile = rootProject.file("keystore/release.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "iosphone2026"
-            keyAlias = "iosphone"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "iosphone2026"
+            storeFile = file("release.jks")
+            // Prefer environment variables so the passwords need not live in a public repository.
+            storePassword = System.getenv("IMSG_STORE_PASSWORD") ?: "iosmessages"
+            keyAlias = "ios"
+            keyPassword = System.getenv("IMSG_KEY_PASSWORD") ?: "iosmessages"
         }
     }
-
     buildTypes {
         release {
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
+        debug {
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
     lint {
-        abortOnError = false
         checkReleaseBuilds = false
+        abortOnError = false
     }
-    packaging {
-        resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/LICENSE*", "/META-INF/DEPENDENCIES")
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
+    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+}
+
+// Kotlin 2.0 Compose compiler plugin: strong skipping is on by default (fewer needless recompositions).
+composeCompiler {
+    stabilityConfigurationFile.set(rootProject.layout.projectDirectory.file("app/compose_compiler_config.conf"))
 }
 
 dependencies {
-    implementation(project(":blurview"))
-    val bom = platform("androidx.compose:compose-bom:2025.02.00")
-    implementation(bom)
+    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
     implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.activity:activity-compose:1.10.1")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.animation:animation")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
-    implementation("androidx.startup:startup-runtime:1.2.0")
+    // lifecycleScope (used to run the integrity re-check off the main thread). Already in the graph; made explicit.
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    // Debug builds only (github.com/square/leakcanary): finds leaked activities / popups. Not shipped in release.
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }

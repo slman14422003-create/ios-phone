@@ -1,9 +1,16 @@
--keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
+-keep class app.ios.messages.ChatTarget { *; }
+-keep class * extends androidx.lifecycle.ViewModel { <init>(...); }
+-keep class * extends androidx.lifecycle.AndroidViewModel { <init>(android.app.Application); }
+-keep class app.ios.messages.SmsReceiver { *; }
+-keep class app.ios.messages.MmsReceiver { *; }
+-keep class app.ios.messages.HeadlessSmsSendService { *; }
 -dontwarn kotlin.**
--keep class eightbitlab.com.blurview.** { *; }
 
--keep class com.iosphone.app.telecom.** { *; }
--keep class com.iosphone.app.PhoneApp { *; }
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
--dontwarn org.jetbrains.annotations.**
+# Release builds print nothing but errors to logcat.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+}

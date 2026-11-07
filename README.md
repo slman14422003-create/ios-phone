@@ -1,6 +1,19 @@
-# ios-phone
-## What's new in this version
-- **Keypad**: digits share one baseline (1 and * no longer sit lower), letters under each digit, responsive key size, iOS-style press flash that fades out, long numbers shrink to fit.
-- **Settings** (gear button next to the filter button on the Calls tab): appearance (system/light/dark), separate backgrounds for the incoming-call screen and the outgoing/active-call screen (7 built-in styles or your own photo, with Blur and Dim sliders and a live preview), key sounds and haptics.
-- **BlurView** is now bundled as the `:blurview` module (from BlurView-master.zip). It blurs the call backgrounds and gives the bottom tab bar / search field real glass over the scrolling lists.
-- **Animations**: iOS-style push/pop with parallax, tab content fade+scale, springy tab icons, animated bar show/hide, pulsing ring on the incoming-call avatar, animated switching between call controls / keypad / ringing.
+# iOS-Messages
+
+SMS/messaging app for **Android 12+ (API 31)** written in **Kotlin + Jetpack Compose**, styled after iOS Messages.
+تطبيق رسائل SMS للأندرويد 12+ بتصميم واجهة iOS (Kotlin + Compose).
+
+## Features
+- Conversation list: large collapsing title, search field, unread blue dot, swipe-to-delete, contact names/avatars
+- Chat: iOS bubbles with tails, grouped bubbles, time separators, "Sent as Text Message", long-press Copy/Delete
+- New message screen ("To:" field), translucent nav bar, iOS light/dark colors
+- Can be set as the **default SMS app** (receive, send, notifications, delete)
+
+## Build
+Open in Android Studio (Koala+), or push to GitHub: the **Build APK** workflow produces `app-debug.apk` as an artifact.
+Local: `gradle assembleDebug` (Gradle 8.9, JDK 17).
+
+## Notes
+- SMS only (no MMS/attachments, no iMessage). Bubbles are green like iOS SMS — change `SentBubble` in `ui/Theme.kt` for blue.
+- SF Pro is not redistributable, so the system font is used.
+- Design references: UX case study "Redesigning iMessage" (uxdesign.cc), Apple HIG, iOS 26 Messages.

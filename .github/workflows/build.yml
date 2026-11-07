@@ -1,4 +1,4 @@
-name: Build
+name: Build APK
 on:
   push:
     branches: [ main ]
@@ -16,8 +16,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.11.1
-      - run: gradle assembleRelease --stacktrace
+      - name: Build release APK (fast, R8-optimized)
+        run: gradle assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          name: iOS-Messages-release
+          path: app/build/outputs/apk/release/app-release.apk
