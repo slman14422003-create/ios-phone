@@ -12,6 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "IosPhone"
+rootProject.name = "iOS-Messages"
 include(":app")
-include(":blurview")

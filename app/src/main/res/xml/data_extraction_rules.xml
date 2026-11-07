@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Nothing leaves the phone through cloud backup or device-to-device transfer. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />
