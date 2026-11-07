@@ -10,7 +10,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -124,19 +126,21 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
     CompositionLocalProvider(LocalAppData provides data, LocalNav provides nav) {
         RequestPermissionsOnce()
         val menuOpen = ScreenBlur.count > 0
-        val menuBlur by animateDpAsState(if (menuOpen) 16.dp else 0.dp, tween(240, easing = IosEase), label = "menuBlur")
-        val menuDim by animateFloatAsState(if (menuOpen) 0.3f else 0f, tween(240, easing = IosEase), label = "menuDim")
+        val menuBlur = animateFloatAsState(if (menuOpen) 40f else 0f, tween(240, easing = IosEase), label = "menuBlur")
+        val menuDim = animateFloatAsState(if (menuOpen) 0.3f else 0f, tween(240, easing = IosEase), label = "menuDim")
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .then(if (menuBlur > 0.dp) Modifier.blur(menuBlur, BlurredEdgeTreatment.Unbounded) else Modifier),
+                    .graphicsLayer {
+                        val r = menuBlur.value
+                        renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
+                    },
             ) {
                 AnimatedContent(
                     targetState = if (vm.searching) 3 else vm.tab,
                     transitionSpec = {
-                        (fadeIn(tween(260, easing = IosEase)) + scaleIn(tween(260, easing = IosEase), initialScale = 0.985f)) togetherWith
-                            fadeOut(tween(140))
+                        fadeIn(tween(160)) togetherWith fadeOut(tween(100))
                     },
                     label = "tabs",
                 ) { page ->
@@ -150,9 +154,7 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
                 RouteLayer(nav)
             }
             EdgeScrims(if (nav.stack.isNotEmpty() && !colors.dark) colors.grouped else colors.background)
-            if (menuDim > 0.001f) {
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = menuDim)))
-            }
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = menuDim.value }.background(Color.Black))
         }
     }
 }

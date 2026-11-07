@@ -33,6 +33,9 @@ public class RenderNodeBlurController implements BlurController {
     private int overlayColor;
     private float blurRadius = BlurController.DEFAULT_BLUR_RADIUS;
     private boolean enabled = true;
+    private boolean cropped;
+    private float cropLeft;
+    private float cropTop;
 
     // Potentially cached stuff from the slow software path
     @Nullable
@@ -90,8 +93,12 @@ public class RenderNodeBlurController implements BlurController {
     private void hardwarePath(Canvas canvas) {
         // TODO would be good to keep it the size of the BlurView instead of the target, but then the animation
         //  like translation and rotation would go out of bounds. Not sure if there's a good fix for this
-        blurNode.setPosition(0, 0, target.getWidth(), target.getHeight());
         updateRenderNodeProperties();
+        if (cropped) {
+            blurNode.setPosition(0, 0, blurView.getWidth(), blurView.getHeight());
+        } else {
+            blurNode.setPosition(0, 0, target.getWidth(), target.getHeight());
+        }
 
         drawSnapshot();
 
@@ -111,6 +118,27 @@ public class RenderNodeBlurController implements BlurController {
 
     private void updateRenderNodeProperties() {
         BlurViewTransform t = BlurViewTransform.compute(blurView, blurViewLocation, targetLocation);
+
+        if (t.scaleX == 1f && t.scaleY == 1f && t.rotationDeg == 0f) {
+            // Fast path: the node only covers the BlurView area and the target is drawn shifted into it,
+            // so the blur works on a few hundred pixels instead of the entire screen.
+            boolean moved = !cropped || cropLeft != t.layoutLeft || cropTop != t.layoutTop;
+            cropped = true;
+            cropLeft = t.layoutLeft;
+            cropTop = t.layoutTop;
+            blurNode.setPivotX(0f);
+            blurNode.setPivotY(0f);
+            blurNode.setTranslationX(0f);
+            blurNode.setTranslationY(0f);
+            blurNode.setScaleX(1f);
+            blurNode.setScaleY(1f);
+            blurNode.setRotationZ(0f);
+            if (moved) {
+                blurView.invalidate();
+            }
+            return;
+        }
+        cropped = false;
 
         float layoutTranslationX = -t.layoutLeft;
         float layoutTranslationY = -t.layoutTop;
@@ -138,7 +166,14 @@ public class RenderNodeBlurController implements BlurController {
         if (frameClearDrawable != null) {
             frameClearDrawable.draw(recordingCanvas);
         }
+        if (cropped) {
+            recordingCanvas.save();
+            recordingCanvas.translate(-cropLeft, -cropTop);
+        }
         recordingCanvas.drawRenderNode(target.renderNode);
+        if (cropped) {
+            recordingCanvas.restore();
+        }
         // Looks like the order of this doesn't matter
         applyBlur();
         blurNode.endRecording();

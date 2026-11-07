@@ -17,9 +17,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -146,14 +149,14 @@ private fun ContactList(query: String) {
     val showIndex = query.isBlank() && sections.size > 1
     var activeLetter by remember { mutableStateOf<String?>(null) }
     var lastLetter by remember { mutableStateOf("") }
-    LaunchedEffect(activeLetter) { activeLetter?.let { lastLetter = it } }
-    val blurRadius by animateDpAsState(
-        targetValue = if (activeLetter != null) 22.dp else 0.dp,
+    val isActive by remember { derivedStateOf { activeLetter != null } }
+    val blurAnim = animateFloatAsState(
+        targetValue = if (isActive) 44f else 0f,
         animationSpec = tween(260),
         label = "indexBlur",
     )
-    val dim by animateFloatAsState(
-        targetValue = if (activeLetter != null) 0.32f else 0f,
+    val dimAnim = animateFloatAsState(
+        targetValue = if (isActive) 0.32f else 0f,
         animationSpec = tween(260),
         label = "indexDim",
     )
@@ -163,7 +166,10 @@ private fun ContactList(query: String) {
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (blurRadius > 0.dp) Modifier.blur(blurRadius, BlurredEdgeTreatment.Unbounded) else Modifier),
+                .graphicsLayer {
+                    val r = blurAnim.value
+                    renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
+                },
             contentPadding = PaddingValues(bottom = 150.dp),
         ) {
             item(key = "top", contentType = "top") {
@@ -184,7 +190,7 @@ private fun ContactList(query: String) {
                     stickyHeader(key = "h_$letter", contentType = "header") { SectionHeader(letter) }
                 }
                 items(people, key = { it.id }, contentType = { "contact" }) { c ->
-                    ContactRow(c, endInset = if (showIndex) IndexWidth - 4.dp else 0.dp, modifier = Modifier.animateItem()) { nav.push(Route.ContactDetail(c.id)) }
+                    ContactRow(c, endInset = if (showIndex) IndexWidth - 4.dp else 0.dp) { nav.push(Route.ContactDetail(c.id)) }
                 }
             }
             if (filtered.isEmpty() && data.loaded) {
@@ -197,11 +203,9 @@ private fun ContactList(query: String) {
                 }
             }
         }
-        if (dim > 0.001f) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
-        }
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = dimAnim.value }.background(Color.Black))
         AnimatedVisibility(
-            visible = activeLetter != null,
+            visible = isActive,
             modifier = Modifier.align(Alignment.Center),
             enter = fadeIn(tween(160)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = 500f), initialScale = 0.6f),
             exit = fadeOut(tween(140)) + scaleOut(tween(140), targetScale = 0.8f),
@@ -215,7 +219,10 @@ private fun ContactList(query: String) {
             SideIndex(
                 letters = sections.keys.toList(),
                 onSelect = { l -> indexMap[l]?.let { listState.requestScrollToItem(it) } },
-                onActive = { activeLetter = it },
+                onActive = {
+                    activeLetter = it
+                    if (it != null) lastLetter = it
+                },
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .statusBarsPadding()

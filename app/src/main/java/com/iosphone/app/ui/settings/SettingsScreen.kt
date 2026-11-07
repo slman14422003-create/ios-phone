@@ -165,13 +165,13 @@ fun SettingsScreen() {
 
             SectionHeader(stringResource(R.string.lock_section))
             val pkg = ctx.packageName
-            val fullScreenOk = remember(appData.version) {
+            val fullScreenOk = remember(appData.resumeCount) {
                 if (Build.VERSION.SDK_INT >= 34) ctx.getSystemService(NotificationManager::class.java).canUseFullScreenIntent() else true
             }
-            val batteryOk = remember(appData.version) {
+            val batteryOk = remember(appData.resumeCount) {
                 (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(pkg)
             }
-            val notifOk = remember(appData.version) { ctx.getSystemService(NotificationManager::class.java).areNotificationsEnabled() }
+            val notifOk = remember(appData.resumeCount) { ctx.getSystemService(NotificationManager::class.java).areNotificationsEnabled() }
             Card {
                 StatusRow(stringResource(R.string.fullscreen_intent), fullScreenOk) {
                     val intent = if (Build.VERSION.SDK_INT >= 34) {
