@@ -41,3 +41,11 @@
 - Recomposition: index blur and dim, and menu blur and dim, are read inside graphicsLayer (no per-frame recomposition). Index letter changes no longer recompose the contact list. Tab switch is a short crossfade only. animateItem removed from contacts. iosRow no longer allocates animation state per row.
 - Images: avatars decoded at display size.
 - Not measured on a device: report which screen still lags.
+
+## Round: IMEI code, silent recordings, transparent tab pill, glass SIM sheet, Messages hand-off
+- *#06#: DialCodes.imei reads IMEI/MEID per slot (Android 10+ only allows this for privileged apps); if it cannot, DialCodes.openImeiScreen opens Settings "Status" (shows IMEI) before the generic About-phone page. Manifest <queries> added so those screens are visible to the app.
+- Silent recordings: VOICE_CALL starts but records silence on many phones. CallRecorder now has a watchdog (reads maxAmplitude; silent for 4 s means restart on the next source: VOICE_CALL, VOICE_RECOGNITION, MIC) and starts recording from RecordingService.serviceReady() so the mic foreground service is already foreground. When only the MIC is available the other side is captured through the speaker.
+- Tab pill: selected capsule is now a transparent glass lens (faint tint + hairline) instead of a grey fill.
+- SIM sheet: iOS 26 glass sheet (GlassBox gets blurRadius/overlay params), whole screen behind blurs and dims via ScreenBlur (also in ContactsShell), bottom tab bar hides while open, rows show the dialed number, SIM tile colors match the Messages app (same per-slot palette in SimInfo.color). Popup menus (GlassMenu) are translucent so the blurred screen shows through.
+- Messages hand-off: telecom/Messaging.kt opens the conversation in app.ios.messages (explicit package) from call detail, contact detail, in-call message button and the quick-reply fallback. The Messages app has PhoneLink.kt doing the same toward com.iosphone.app.
+- Not verified by a local build: run the GitHub Actions workflow.

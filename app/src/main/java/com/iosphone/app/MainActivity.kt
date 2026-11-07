@@ -59,7 +59,11 @@ class MainActivity : ComponentActivity() {
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM),
         )
         val overlay = ComposeView(this).apply {
-            setContent { IosTheme(syncSystemBars = true) { SimPickerHost() } }
+            setContent {
+                IosTheme(syncSystemBars = true) {
+                    CompositionLocalProvider(LocalBlurTarget provides target) { SimPickerHost() }
+                }
+            }
         }
         root.addView(
             overlay,

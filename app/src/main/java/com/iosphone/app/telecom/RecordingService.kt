@@ -26,7 +26,7 @@ class RecordingService : Service() {
         val ok = runCatching {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
         }.isSuccess
-        if (!ok) stopSelf()
+        if (ok) CallRecorder.serviceReady() else stopSelf()
         return START_NOT_STICKY
     }
 

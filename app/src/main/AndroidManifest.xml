@@ -26,6 +26,19 @@
 
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
+    <!-- Package visibility (Android 11+): the companion Messages app, and the Settings screens that list the IMEI. -->
+    <queries>
+        <package android:name="app.ios.messages" />
+        <package android:name="com.android.settings" />
+        <intent>
+            <action android:name="android.settings.DEVICE_INFO_SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+    </queries>
+
     <application
         android:name=".PhoneApp"
         android:allowBackup="false"

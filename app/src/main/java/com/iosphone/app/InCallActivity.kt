@@ -39,11 +39,7 @@ class InCallActivity : ComponentActivity() {
                         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     },
                     onMessage = { number ->
-                        runCatching {
-                            startActivity(
-                                Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
+                        com.iosphone.app.telecom.Messaging.open(this, number)
                     },
                 )
             }

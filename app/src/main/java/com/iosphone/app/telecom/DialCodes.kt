@@ -12,15 +12,44 @@ object DialCodes {
 
     fun isCode(raw: String): Boolean = raw == "*#06#" || secret.matches(raw) || ussd.matches(raw)
 
+    /**
+     * IMEI / MEID of every slot, one labeled line each. Android 10+ only hands these to privileged apps,
+     * so this returns null on most modern devices and the caller falls back to [openImeiScreen].
+     */
     fun imei(context: Context): String? = runCatching {
         val tm = context.getSystemService(TelephonyManager::class.java)
-        val list = ArrayList<String>()
-        for (slot in 0..1) {
+        val slots = tm.phoneCount.coerceIn(1, 2)
+        val lines = ArrayList<String>()
+        val seen = HashSet<String>()
+        for (slot in 0 until slots) {
             val v = runCatching { tm.getImei(slot) }.getOrNull()
-            if (!v.isNullOrBlank() && v !in list) list.add(v)
+            if (!v.isNullOrBlank() && seen.add(v)) lines.add("IMEI ${lines.size + 1}: $v")
         }
-        if (list.isEmpty()) null else list.joinToString("\n")
+        for (slot in 0 until slots) {
+            val v = runCatching { tm.getMeid(slot) }.getOrNull()
+            if (!v.isNullOrBlank() && seen.add(v)) lines.add("MEID: $v")
+        }
+        if (lines.isEmpty()) null else lines.joinToString("\n")
     }.getOrNull()
+
+    /**
+     * Fallback when the IMEI cannot be read: open the system screens that list it ("Status" first, which
+     * shows IMEI directly), and only then the generic About-phone page.
+     */
+    fun openImeiScreen(context: Context) {
+        val pm = context.packageManager
+        val candidates = listOf(
+            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$StatusActivity"),
+            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$ImeiInformationActivity"),
+            Intent("android.settings.DEVICE_INFO_SETTINGS"),
+        )
+        for (intent in candidates) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(pm) == null) continue
+            if (runCatching { context.startActivity(intent) }.isSuccess) return
+        }
+        deviceInfo(context)
+    }
 
     fun secretCode(context: Context, raw: String): Boolean {
         val digits = secret.matchEntire(raw)?.groupValues?.get(1) ?: return false

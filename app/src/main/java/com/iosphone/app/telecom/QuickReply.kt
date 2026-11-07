@@ -23,13 +23,7 @@ object QuickReply {
             }
         }.isSuccess
         if (!sent) {
-            runCatching {
-                context.startActivity(
-                    Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null))
-                        .putExtra("sms_body", text)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }
+            Messaging.open(context, number, text)
         }
     }
 }

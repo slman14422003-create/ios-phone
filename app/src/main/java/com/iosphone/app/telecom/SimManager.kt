@@ -16,8 +16,12 @@ class SimInfo(
     val number: String?,
     val subId: Int = -1,
 ) {
+    /** Same per-slot colors as the Messages app, so a SIM looks identical in both apps. */
+    val color: Long get() = PALETTE[slot.coerceAtLeast(0) % PALETTE.size]
     val id: String get() = handle.componentName.flattenToString() + "/" + handle.id
 }
+
+private val PALETTE = longArrayOf(0xFFFF9500, 0xFFAF52DE, 0xFF5AC8FA, 0xFFFF2D55, 0xFF5856D6, 0xFF8E8E93)
 
 object SimManager {
     fun list(context: Context): List<SimInfo> {

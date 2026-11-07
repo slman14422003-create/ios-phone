@@ -83,7 +83,7 @@ fun CallDetailScreen(number: String) {
         ) {
             Box(
                 Modifier.size(60.dp).pressable {
-                    runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null))) }
+                    com.iosphone.app.telecom.Messaging.open(context, number)
                 }.glass(CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
