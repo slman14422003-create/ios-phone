@@ -38,14 +38,6 @@ object DialCodes {
      */
     fun openImeiScreen(context: Context) {
         val pm = context.packageManager
-        // The system dialer (Samsung Phone / Google Phone) is privileged and can show the IMEI itself.
-        for (pkg in listOf("com.samsung.android.dialer", "com.google.android.dialer", "com.android.dialer")) {
-            val dial = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode("*#06#")))
-                .setPackage(pkg)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (dial.resolveActivity(pm) == null) continue
-            if (runCatching { context.startActivity(dial) }.isSuccess) return
-        }
         val candidates = listOf(
             Intent().setClassName("com.android.settings", "com.android.settings.Settings\$StatusActivity"),
             Intent().setClassName("com.android.settings", "com.android.settings.Settings\$ImeiInformationActivity"),

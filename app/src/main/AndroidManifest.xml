@@ -30,9 +30,6 @@
     <queries>
         <package android:name="app.ios.messages" />
         <package android:name="com.android.settings" />
-        <package android:name="com.samsung.android.dialer" />
-        <package android:name="com.google.android.dialer" />
-        <package android:name="com.android.dialer" />
         <intent>
             <action android:name="android.settings.DEVICE_INFO_SETTINGS" />
         </intent>
