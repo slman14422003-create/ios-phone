@@ -241,4 +241,6 @@
     <string name="voicemail_settings">إعدادات البريد الصوتي</string>
     <string name="share_rec_log">مشاركة سجل التسجيل</string>
     <string name="rec_log_empty">لا يوجد سجل بعد. أجرِ مكالمة والتسجيل مفعّل أولاً.</string>
+    <string name="rec_a11y">صلاحية صوت المكالمة</string>
+    <string name="a11y_desc">تسمح لأندرويد بتسجيل المكالمات على هذا الهاتف. هذه الخدمة لا تقرأ شاشتك.</string>
 </resources>
