@@ -243,4 +243,5 @@
     <string name="rec_log_empty">No recording log yet. Make a call with recording on first.</string>
     <string name="rec_a11y">Call audio access</string>
     <string name="a11y_desc">Lets Android allow call recording on this phone. This service does not read your screen.</string>
+    <string name="rec_speaker">Speaker while recording (captures the other person)</string>
 </resources>

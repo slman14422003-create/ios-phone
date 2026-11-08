@@ -243,4 +243,5 @@
     <string name="rec_log_empty">لا يوجد سجل بعد. أجرِ مكالمة والتسجيل مفعّل أولاً.</string>
     <string name="rec_a11y">صلاحية صوت المكالمة</string>
     <string name="a11y_desc">تسمح لأندرويد بتسجيل المكالمات على هذا الهاتف. هذه الخدمة لا تقرأ شاشتك.</string>
+    <string name="rec_speaker">مكبّر الصوت أثناء التسجيل (لالتقاط صوت الطرف الآخر)</string>
 </resources>
