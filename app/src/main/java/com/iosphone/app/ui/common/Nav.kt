@@ -2,7 +2,6 @@ package com.iosphone.app.ui.common
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,6 +16,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.iosphone.app.ui.calls.CallDetailScreen
 import com.iosphone.app.ui.calls.VoicemailScreen
 import com.iosphone.app.ui.recordings.RecordingsScreen
@@ -45,39 +46,46 @@ sealed interface Route {
 
 class Nav {
     val stack = mutableStateListOf<Route>()
+    var returnOnEmpty = false
+    var onEmpty: (() -> Unit)? = null
 
     fun push(route: Route) {
         stack.add(route)
     }
 
     fun pop() {
-        if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex)
+        if (stack.isEmpty()) return
+        stack.removeAt(stack.lastIndex)
+        if (stack.isEmpty() && returnOnEmpty) {
+            returnOnEmpty = false
+            onEmpty?.invoke()
+        }
     }
 }
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("Nav missing") }
-
-private val PushEase = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
-private const val PushMs = 420
 
 private data class Page(val route: Route?, val depth: Int)
 
 @Composable
 fun RouteLayer(nav: Nav, modifier: Modifier = Modifier) {
     val page = Page(nav.stack.lastOrNull(), nav.stack.size)
+    val sign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
+    val ms = Motion.PushMs
+    val ease = Motion.PushEase
     BackHandler(enabled = page.route != null) { nav.pop() }
     AnimatedContent(
         targetState = page,
         modifier = modifier.fillMaxSize(),
         transitionSpec = {
             val forward = targetState.depth >= initialState.depth
-            val slideIn = slideInHorizontally(tween(PushMs, easing = PushEase)) { it }
-            val slideOut = slideOutHorizontally(tween(PushMs, easing = PushEase)) { it }
-            val parallaxIn = slideInHorizontally(tween(PushMs, easing = PushEase)) { -it / 3 } + fadeIn(tween(PushMs))
-            val parallaxOut = slideOutHorizontally(tween(PushMs, easing = PushEase)) { -it / 3 } + fadeOut(tween(PushMs))
+            val slideIn = slideInHorizontally(tween(ms, easing = ease)) { it * sign }
+            val slideOut = slideOutHorizontally(tween(ms, easing = ease)) { it * sign }
+            val parallaxIn = slideInHorizontally(tween(ms, easing = ease)) { -it * sign / 3 } + fadeIn(tween(ms))
+            val parallaxOut = slideOutHorizontally(tween(ms, easing = ease)) { -it * sign / 3 } + fadeOut(tween(ms))
             when {
-                initialState.route == null -> (slideIn togetherWith fadeOut(tween(PushMs))).also { it.targetContentZIndex = 1f }
-                targetState.route == null -> (fadeIn(tween(PushMs)) togetherWith slideOut).also { it.targetContentZIndex = -1f }
+                initialState.route == null -> (slideIn togetherWith fadeOut(tween(ms))).also { it.targetContentZIndex = 1f }
+                targetState.route == null -> (fadeIn(tween(ms)) togetherWith slideOut).also { it.targetContentZIndex = -1f }
                 forward -> (slideIn togetherWith parallaxOut).also { it.targetContentZIndex = 1f }
                 else -> (parallaxIn togetherWith slideOut).also { it.targetContentZIndex = -1f }
             }

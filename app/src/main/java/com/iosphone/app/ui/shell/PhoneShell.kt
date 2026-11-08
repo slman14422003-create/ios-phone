@@ -19,7 +19,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import android.view.HapticFeedbackConstants
+import com.iosphone.app.ui.common.Motion
 import com.iosphone.app.ui.common.ScreenBlur
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.iosphone.app.ui.common.SimPicker
 import com.iosphone.app.ui.common.EdgeScrims
 import kotlin.math.roundToInt
@@ -118,7 +121,7 @@ class ShellViewModel : ViewModel() {
     val nav = Nav()
 }
 
-private val IosEase = CubicBezierEasing(0.25f, 0.8f, 0.25f, 1f)
+private val IosEase = Motion.MenuEase
 
 /** Everything that scrolls. Lives inside the BlurTarget so the bar can blur it. */
 @Composable
@@ -129,8 +132,10 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
     CompositionLocalProvider(LocalAppData provides data, LocalNav provides nav) {
         RequestPermissionsOnce()
         val menuOpen = ScreenBlur.count > 0
-        val menuBlur = animateFloatAsState(if (menuOpen) 40f else 0f, tween(240, easing = IosEase), label = "menuBlur")
-        val menuDim = animateFloatAsState(if (menuOpen) 0.3f else 0f, tween(240, easing = IosEase), label = "menuDim")
+        val menuBlur = animateFloatAsState(if (menuOpen) Motion.MenuBlur else 0f, tween(Motion.MenuMs, easing = Motion.MenuEase), label = "menuBlur")
+        val menuDim = animateFloatAsState(if (menuOpen) Motion.MenuDim else 0f, tween(Motion.MenuMs, easing = Motion.MenuEase), label = "menuDim")
+        val pushed = animateFloatAsState(if (nav.stack.isEmpty()) 0f else 1f, tween(Motion.PushMs, easing = Motion.PushEase), label = "pushed")
+        val sign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Box(
                 Modifier
@@ -140,19 +145,26 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
                         renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Clamp) else null
                     },
             ) {
-                AnimatedContent(
-                    targetState = if (vm.searching) 3 else vm.tab,
-                    transitionSpec = {
-                        fadeIn(tween(160)) togetherWith fadeOut(tween(100))
+                Box(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        translationX = -pushed.value * size.width * Motion.Parallax * sign
                     },
-                    label = "tabs",
-                ) { page ->
-                    when (page) {
-                        3 -> SearchScreen(vm.query)
-                        2 -> KeypadScreen(dialNumber)
-                        else -> CallsScreen()
+                ) {
+                    AnimatedContent(
+                        targetState = if (vm.searching) 3 else vm.tab,
+                        transitionSpec = {
+                            fadeIn(tween(160)) togetherWith fadeOut(tween(100))
+                        },
+                        label = "tabs",
+                    ) { page ->
+                        when (page) {
+                            3 -> SearchScreen(vm.query)
+                            2 -> KeypadScreen(dialNumber)
+                            else -> CallsScreen()
+                        }
                     }
                 }
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = pushed.value * Motion.PushDim }.background(Color.Black))
                 RouteLayer(nav)
             }
             EdgeScrims(if (nav.stack.isNotEmpty() && !colors.dark) colors.grouped else colors.background)
