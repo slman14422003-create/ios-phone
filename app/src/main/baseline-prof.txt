@@ -1,9 +1,0 @@
-HSPLcom/iosphone/app/**->**(**)**
-Lcom/iosphone/app/**;
-HSPLandroidx/compose/runtime/**->**(**)**
-HSPLandroidx/compose/ui/**->**(**)**
-HSPLandroidx/compose/foundation/**->**(**)**
-HSPLandroidx/compose/animation/**->**(**)**
-HSPLandroidx/lifecycle/**->**(**)**
-HSPLandroidx/activity/**->**(**)**
-HSPLeightbitlab/com/blurview/**->**(**)**
