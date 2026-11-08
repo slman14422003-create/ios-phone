@@ -46,6 +46,17 @@ class InCallActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        CallManager.uiVisible = true
+    }
+
+    override fun onStop() {
+        CallManager.uiVisible = false
+        CallManager.service?.syncIncoming()
+        super.onStop()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -55,7 +66,7 @@ class InCallActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     private fun handle(intent: Intent?) {
         if (intent?.action == ACTION_ANSWER) {
-            val call = CallManager.primary()
+            val call = CallManager.ringing()
             if (call != null && call.state == Call.STATE_RINGING) CallManager.answer(call)
         }
     }

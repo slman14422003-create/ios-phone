@@ -59,3 +59,12 @@
 - Deep links for the Contacts app: MainActivity handles com.iosphone.app.action.RECORDINGS (extra contact_id) and com.iosphone.app.action.CALL_INFO (extra number). Manifest queries include com.iosphone.contacts.
 - Pattern: when a feature moves to a sibling app, keep a read-only data path for lookups and route every write or edit UI through an explicit-package intent.
 - Not verified by a local build: run the GitHub Actions workflow.
+
+## Incoming call banner over an ongoing call, multi-call fixes
+- Feature: ui/incall/CallBanner.kt (IncomingBanner, iOS-style pill at the top with avatar, name, decline and accept; tap expands to the full ringing screen). InCallScreen shows it when AppSettings.incomingDisplay == 0 (Automatic), a call is ringing and another call is active or on hold. Fullscreen mode (1) keeps the full ringing screen.
+- InCallScreen: while the banner is up, the ongoing call stays on screen (primary = CallManager.ongoing()), the ringing call is hidden from the "on hold" chips, and mute, hold, record, keypad and end act on the shown call instead of CallManager.primary() (which returns the ringing call first).
+- CallManager: new ringing() and ongoing() helpers, uiVisible flag set by InCallActivity onStart/onStop.
+- CallService fixes: cancelIncoming no longer fires when another call is still ringing (new syncIncoming reposts the notification for the next ringing call); flash and auto-answer extras stop only when no call is ringing; heads-up notification is skipped while the in-app banner is visible, and posted again when the call screen goes to the background.
+- CallActionReceiver and InCallActivity answer/decline target the ringing call, hangup targets the ongoing call.
+- Pattern: any action meant for the ringing call must use CallManager.ringing(); actions for the live call must use the call currently shown, not primary().
+- Not verified by a local build: run the GitHub Actions workflow.

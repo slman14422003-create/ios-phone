@@ -27,11 +27,14 @@ object CallManager {
     var muted by mutableStateOf(false)
     var route by mutableIntStateOf(CallAudioState.ROUTE_EARPIECE)
     var service: CallService? = null
+
+    @Volatile
+    var uiVisible = false
     private val handler = Handler(Looper.getMainLooper())
 
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
-            if (state != Call.STATE_RINGING) service?.cancelIncoming()
+            if (state != Call.STATE_RINGING) service?.syncIncoming()
             service?.onStateEvent(state)
             service?.refreshProximity()
             service?.let {
@@ -58,6 +61,17 @@ object CallManager {
         service?.let { CallRecorder.onCallEnded(it, call) }
         calls.remove(call)
         tick++
+    }
+
+    fun ringing(): Call? {
+        tick
+        return calls.firstOrNull { it.state == Call.STATE_RINGING }
+    }
+
+    fun ongoing(): Call? {
+        tick
+        return calls.firstOrNull { it.state == Call.STATE_ACTIVE || it.state == Call.STATE_DIALING || it.state == Call.STATE_CONNECTING } 
+            ?: calls.firstOrNull { it.state == Call.STATE_HOLDING }
     }
 
     fun primary(): Call? {

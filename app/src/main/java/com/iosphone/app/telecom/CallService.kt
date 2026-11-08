@@ -34,6 +34,7 @@ class CallService : InCallService() {
     private var torchOn = false
     private var torchId: String? = null
     private var autoAnswer: Runnable? = null
+    private var notifiedCall: Call? = null
     private val blink = object : Runnable {
         override fun run() {
             torchOn = !torchOn
@@ -77,8 +78,8 @@ class CallService : InCallService() {
 
     override fun onCallRemoved(call: Call) {
         CallManager.remove(call)
-        if (CallManager.calls.none { it.state == Call.STATE_RINGING }) stopRingExtras()
-        cancelIncoming()
+        if (notifiedCall === call) notifiedCall = null
+        syncIncoming()
         refreshProximity()
     }
 
@@ -93,7 +94,17 @@ class CallService : InCallService() {
     fun onStateEvent(state: Int) {
         if (state == Call.STATE_ACTIVE && AppSettings.vibrateOnAnswer) KeyFeedback.pulse(this, 70)
         if (state == Call.STATE_DISCONNECTED && AppSettings.vibrateOnEnd) KeyFeedback.pulse(this, 110)
-        if (state != Call.STATE_RINGING) stopRingExtras()
+        if (CallManager.calls.none { it.state == Call.STATE_RINGING }) stopRingExtras()
+    }
+
+    fun syncIncoming() {
+        val next = CallManager.calls.firstOrNull { it.state == Call.STATE_RINGING }
+        if (next == null) {
+            stopRingExtras()
+            cancelIncoming()
+        } else if (next !== notifiedCall) {
+            showIncoming(next)
+        }
     }
 
     private fun setTorch(on: Boolean) {
@@ -147,6 +158,7 @@ class CallService : InCallService() {
     }
 
     fun cancelIncoming() {
+        notifiedCall = null
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
     }
 
@@ -159,6 +171,9 @@ class CallService : InCallService() {
     private fun showIncoming(call: Call) {
         val number = CallManager.info(call).number
         if (AppSettings.incomingDisplay == 1) openUi()
+        val bannerShown = AppSettings.incomingDisplay == 0 && CallManager.uiVisible &&
+            CallManager.calls.any { it !== call && it.state != Call.STATE_RINGING }
+        if (bannerShown) return
         val worker = io
         if (worker == null) {
             postIncoming(call, PhoneFormat.format(number).ifEmpty { getString(R.string.unknown) })
@@ -183,6 +198,8 @@ class CallService : InCallService() {
     }
 
     private fun postIncoming(call: Call, name: String, icon: Icon? = null) {
+        if (call.state != Call.STATE_RINGING) return
+        notifiedCall = call
         val nm = getSystemService(NotificationManager::class.java)
         if (!channelReady) {
             val channel = NotificationChannel(CHANNEL_ID, getString(R.string.incoming_channel), NotificationManager.IMPORTANCE_HIGH)

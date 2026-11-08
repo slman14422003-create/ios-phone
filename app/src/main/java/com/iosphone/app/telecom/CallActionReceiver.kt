@@ -7,8 +7,8 @@ import android.content.Intent
 class CallActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            ACTION_DECLINE -> CallManager.primary()?.let { CallManager.reject(it) }
-            ACTION_HANGUP -> CallManager.primary()?.let { CallManager.hangup(it) }
+            ACTION_DECLINE -> (CallManager.ringing() ?: CallManager.primary())?.let { CallManager.reject(it) }
+            ACTION_HANGUP -> (CallManager.ongoing() ?: CallManager.primary())?.let { CallManager.hangup(it) }
             ACTION_REMIND -> {
                 val number = intent.getStringExtra(EXTRA_NUMBER).orEmpty()
                 if (number.isNotBlank()) CallReminder.show(context, number, intent.getStringExtra(EXTRA_NAME).orEmpty().ifBlank { number })
