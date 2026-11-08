@@ -165,6 +165,8 @@ object AppSettings {
         private set
     var autoRecord by mutableStateOf(true)
         private set
+    var recordSpeaker by mutableStateOf(true)
+        private set
     var defaultSim by mutableStateOf("")
         private set
     var roamingAssist by mutableStateOf(true)
@@ -197,6 +199,7 @@ object AppSettings {
         hapticLevel = p.getInt("haptic_level", 1).coerceIn(1, 3)
         keyVolume = p.getInt("key_volume", 70).coerceIn(0, 100)
         autoRecord = p.getBoolean("auto_record", true)
+        recordSpeaker = p.getBoolean("record_speaker", true)
         defaultSim = p.getString("default_sim", "").orEmpty()
         roamingAssist = p.getBoolean("roaming_assist", true)
         autoAnswerSeconds = p.getInt("auto_answer", 0).coerceIn(0, 30)
@@ -247,6 +250,11 @@ object AppSettings {
     fun changeKeyVolume(value: Int) {
         keyVolume = value.coerceIn(0, 100)
         edit { putInt("key_volume", keyVolume) }
+    }
+
+    fun changeRecordSpeaker(value: Boolean) {
+        recordSpeaker = value
+        edit { putBoolean("record_speaker", value) }
     }
 
     fun changeAutoRecord(value: Boolean) {

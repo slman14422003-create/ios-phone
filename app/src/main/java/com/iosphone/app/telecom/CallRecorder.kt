@@ -38,6 +38,7 @@ object CallRecorder {
     private var startedAt = 0L
     private var heardSound = false
     private var loggedSound = false
+    private var forcedSpeaker = false
     private val suppressed = HashSet<Call>()
 
     private val sources = intArrayOf(
@@ -118,6 +119,12 @@ object CallRecorder {
         }
         owner = call
         file = target
+        if (AppSettings.recordSpeaker && CallManager.route != android.telecom.CallAudioState.ROUTE_SPEAKER &&
+            CallManager.route != android.telecom.CallAudioState.ROUTE_BLUETOOTH
+        ) {
+            forcedSpeaker = true
+            CallManager.setSpeaker(true)
+        }
         recording = true
         heardSound = false
         loggedSound = false
@@ -193,9 +200,16 @@ object CallRecorder {
         }
     }
 
+    private fun restoreRoute() {
+        if (!forcedSpeaker) return
+        forcedSpeaker = false
+        if (CallManager.calls.any { it.state == Call.STATE_ACTIVE }) CallManager.setSpeaker(false)
+    }
+
     fun stop(context: Context) {
         handler.removeCallbacks(watchdog)
         pending = null
+        restoreRoute()
         val r = recorder
         if (r == null) {
             val app = context.applicationContext

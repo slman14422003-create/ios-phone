@@ -81,3 +81,7 @@
 - recording.log showed every source (VOICE_COMMUNICATION, VOICE_RECOGNITION, MIC, UNPROCESSED, CAMCORDER) opening fine but silent, and VOICE_CALL failing, so Android silences capture during calls for this app; source switching cannot fix that.
 - Added telecom/RecordingAccessibility.kt (empty AccessibilityService, no window content, res/xml/recording_accessibility.xml, manifest entry with BIND_ACCESSIBILITY_SERVICE). Apps with an enabled accessibility service are often allowed to capture the mic during calls. Settings > Recording has a status row "Call audio access" that opens Accessibility settings.
 - User must enable it once under Accessibility > Downloaded/Installed apps. Not verified on a device: if recording.log still shows silence after enabling it, the phone blocks capture for all apps.
+
+## Other person not recorded: speaker while recording
+- After enabling the accessibility service the mic works but the remote voice is not captured (earpiece audio is not reachable by a normal app). New setting AppSettings.recordSpeaker (default on, Settings > Recording): CallRecorder.begin switches the route to speaker when it is neither speaker nor Bluetooth and sets forcedSpeaker; stop() restores the earpiece through restoreRoute() only if that call is still active.
+- Limitation: with the speaker on, the mic captures the other person at speaker quality and some echo. Bluetooth routes are left alone.
