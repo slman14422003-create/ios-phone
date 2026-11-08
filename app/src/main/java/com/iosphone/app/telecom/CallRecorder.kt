@@ -37,13 +37,28 @@ object CallRecorder {
     private var sourceIndex = 0
     private var startedAt = 0L
     private var heardSound = false
+    private var loggedSound = false
     private val suppressed = HashSet<Call>()
 
     private val sources = intArrayOf(
         MediaRecorder.AudioSource.VOICE_CALL,
+        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
         MediaRecorder.AudioSource.VOICE_RECOGNITION,
         MediaRecorder.AudioSource.MIC,
+        MediaRecorder.AudioSource.UNPROCESSED,
+        MediaRecorder.AudioSource.CAMCORDER,
     )
+
+    private val sourceNames = arrayOf("VOICE_CALL", "VOICE_COMMUNICATION", "VOICE_RECOGNITION", "MIC", "UNPROCESSED", "CAMCORDER")
+
+    private fun log(message: String) {
+        val app = appContext ?: return
+        runCatching {
+            val f = File(app.filesDir, "recording.log")
+            if (f.exists() && f.length() > 64 * 1024) f.delete()
+            f.appendText(java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date()) + " " + message + "\n")
+        }
+    }
 
     private const val CHECK_MS = 500L
     private const val SILENCE_LIMIT_MS = 4000L
@@ -105,6 +120,7 @@ object CallRecorder {
         file = target
         recording = true
         heardSound = false
+        loggedSound = false
         startedAt = System.currentTimeMillis()
         handler.removeCallbacks(watchdog)
         handler.postDelayed(watchdog, CHECK_MS)
@@ -116,6 +132,7 @@ object CallRecorder {
             val r = MediaRecorder(app)
             val ok = runCatching {
                 r.setAudioSource(sources[i])
+                runCatching { r.setPrivacySensitive(false) }
                 r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 r.setAudioChannels(1)
@@ -125,6 +142,7 @@ object CallRecorder {
                 r.prepare()
                 r.start()
             }.isSuccess
+            log("open " + sourceNames[i] + " ok=" + ok)
             if (ok) {
                 recorder = r
                 sourceIndex = i
@@ -142,6 +160,10 @@ object CallRecorder {
             val r = recorder ?: return
             val amp = runCatching { r.maxAmplitude }.getOrDefault(0)
             if (amp > 0) heardSound = true
+            if (heardSound && !loggedSound) {
+                loggedSound = true
+                log("sound heard on " + sourceNames[sourceIndex] + " amp=" + amp)
+            }
             val elapsed = System.currentTimeMillis() - startedAt
             if (!heardSound && elapsed >= SILENCE_LIMIT_MS && sourceIndex < sources.lastIndex) {
                 switchSource()
@@ -154,6 +176,7 @@ object CallRecorder {
     private fun switchSource() {
         val app = appContext ?: return
         val target = file ?: return
+        log("silent on " + sourceNames[sourceIndex] + ", switching")
         runCatching { recorder?.stop() }
         runCatching { recorder?.release() }
         recorder = null
@@ -161,6 +184,7 @@ object CallRecorder {
         if (open(app, target, sourceIndex + 1)) {
             startedAt = System.currentTimeMillis()
             heardSound = false
+            loggedSound = false
         } else {
             owner = null
             recording = false
@@ -172,7 +196,12 @@ object CallRecorder {
     fun stop(context: Context) {
         handler.removeCallbacks(watchdog)
         pending = null
-        val r = recorder ?: return
+        val r = recorder
+        if (r == null) {
+            val app = context.applicationContext
+            runCatching { app.stopService(Intent(app, RecordingService::class.java)) }
+            return
+        }
         runCatching { r.stop() }
         runCatching { r.release() }
         recorder = null

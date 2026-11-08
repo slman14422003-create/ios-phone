@@ -68,3 +68,11 @@
 - CallActionReceiver and InCallActivity answer/decline target the ringing call, hangup targets the ongoing call.
 - Pattern: any action meant for the ringing call must use CallManager.ringing(); actions for the live call must use the call currently shown, not primary().
 - Not verified by a local build: run the GitHub Actions workflow.
+
+## Silent call recordings, more audio sources and a diagnostics log
+- CallRecorder source order is now VOICE_CALL, VOICE_COMMUNICATION, VOICE_RECOGNITION, MIC, UNPROCESSED, CAMCORDER; the watchdog moves to the next source when the stream is silent for 4 s.
+- setPrivacySensitive(false) is requested on each recorder so the capture is not blocked by the call's own capture.
+- filesDir/recording.log records which source opened, which one produced sound and every silent switch, to find the source that works on a given phone.
+- stop() now also stops RecordingService when no recorder exists.
+- Limitation: Android 10+ blocks call audio for normal apps; on phones that block every source the recording stays silent unless the speaker is on. Not tested on a device: read recording.log after a test call.
+- Settings > Recording has a "Share recording log" row (NavRow) that sends the last 12000 chars of filesDir/recording.log through ACTION_SEND as text, since filesDir is not reachable without root.
