@@ -76,3 +76,8 @@
 - stop() now also stops RecordingService when no recorder exists.
 - Limitation: Android 10+ blocks call audio for normal apps; on phones that block every source the recording stays silent unless the speaker is on. Not tested on a device: read recording.log after a test call.
 - Settings > Recording has a "Share recording log" row (NavRow) that sends the last 12000 chars of filesDir/recording.log through ACTION_SEND as text, since filesDir is not reachable without root.
+
+## Recording still silent: accessibility service workaround
+- recording.log showed every source (VOICE_COMMUNICATION, VOICE_RECOGNITION, MIC, UNPROCESSED, CAMCORDER) opening fine but silent, and VOICE_CALL failing, so Android silences capture during calls for this app; source switching cannot fix that.
+- Added telecom/RecordingAccessibility.kt (empty AccessibilityService, no window content, res/xml/recording_accessibility.xml, manifest entry with BIND_ACCESSIBILITY_SERVICE). Apps with an enabled accessibility service are often allowed to capture the mic during calls. Settings > Recording has a status row "Call audio access" that opens Accessibility settings.
+- User must enable it once under Accessibility > Downloaded/Installed apps. Not verified on a device: if recording.log still shows silence after enabling it, the phone blocks capture for all apps.
