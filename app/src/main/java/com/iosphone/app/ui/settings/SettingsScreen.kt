@@ -271,6 +271,7 @@ fun SettingsScreen() {
             SectionHeader(stringResource(R.string.recording_section))
             Card {
                 ToggleRow(stringResource(R.string.auto_record), AppSettings.autoRecord) { AppSettings.changeAutoRecord(it) }
+                ToggleRow(stringResource(R.string.rec_speaker), AppSettings.recordSpeaker) { AppSettings.changeRecordSpeaker(it) }
                 val a11yOk = remember(appData.resumeCount) { com.iosphone.app.telecom.RecordingAccessibility.enabled(ctx) }
                 StatusRow(stringResource(R.string.rec_a11y), a11yOk) {
                     ctx.startActivity(
