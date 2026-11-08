@@ -271,6 +271,13 @@ fun SettingsScreen() {
             SectionHeader(stringResource(R.string.recording_section))
             Card {
                 ToggleRow(stringResource(R.string.auto_record), AppSettings.autoRecord) { AppSettings.changeAutoRecord(it) }
+                val a11yOk = remember(appData.resumeCount) { com.iosphone.app.telecom.RecordingAccessibility.enabled(ctx) }
+                StatusRow(stringResource(R.string.rec_a11y), a11yOk) {
+                    ctx.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
                 NavRow(stringResource(R.string.share_rec_log)) {
                     val text = runCatching {
                         java.io.File(ctx.filesDir, "recording.log").readText().takeLast(12000)
