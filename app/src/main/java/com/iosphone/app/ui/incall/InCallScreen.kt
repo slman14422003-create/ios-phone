@@ -68,8 +68,18 @@ private class Shown(
 fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String) -> Unit) {
     val context = LocalContext.current
     val tick = CallManager.tick
-    val primary = CallManager.primary()
-    val others = CallManager.calls.filter { it !== primary }
+    val ringingCall = CallManager.ringing()
+    val ongoingCall = CallManager.ongoing()
+    var expanded by remember { mutableStateOf(false) }
+    LaunchedEffect(ringingCall) { expanded = false }
+    val bannerMode = AppSettings.incomingDisplay == 0 && ringingCall != null && ongoingCall != null && !expanded
+    val primary = if (bannerMode) ongoingCall else CallManager.primary()
+    val others = CallManager.calls.filter { it !== primary && !(bannerMode && it === ringingCall) }
+    val ringInfo = if (bannerMode && ringingCall != null) CallManager.info(ringingCall) else null
+    val ringLookup by produceState(LookupInfo(null, null), ringInfo?.number) {
+        val n = ringInfo?.number.orEmpty()
+        value = if (n.isEmpty()) LookupInfo(null, null) else withContext(Dispatchers.IO) { ContactLookup.find(context, n) }
+    }
     val info = if (primary != null) CallManager.info(primary) else null
     val lookup by produceState(LookupInfo(null, null), info?.number) {
         val n = info?.number.orEmpty()
@@ -156,25 +166,36 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
             canMerge = others.isNotEmpty(),
         )
         val act = CallActions(
-            decline = { CallManager.primary()?.let { CallManager.reject(it) } },
-            accept = { CallManager.primary()?.let { CallManager.answer(it) } },
+            decline = { (CallManager.ringing() ?: primary)?.let { CallManager.reject(it) } },
+            accept = { (CallManager.ringing() ?: primary)?.let { CallManager.answer(it) } },
             remind = { sheet = 2 },
             message = { sheet = 1 },
             speaker = { CallManager.setSpeaker(!speakerOn) },
-            record = { CallManager.primary()?.let { CallRecorder.toggle(context, it) } },
+            record = { primary?.let { CallRecorder.toggle(context, it) } },
             mute = { CallManager.applyMute(!muted) },
-            hold = { CallManager.primary()?.let { if (onHold) CallManager.unhold(it) else CallManager.hold(it) } },
+            hold = { primary?.let { if (onHold) CallManager.unhold(it) else CallManager.hold(it) } },
             addCall = onAddCall,
-            merge = { CallManager.primary()?.let { p -> others.firstOrNull()?.let { o -> CallManager.merge(p, o) } } },
+            merge = { primary?.let { p -> others.firstOrNull()?.let { o -> CallManager.merge(p, o) } } },
             keypad = { showPad = true },
             hidePad = { showPad = false },
-            end = { CallManager.primary()?.let { CallManager.hangup(it) } },
+            end = { primary?.let { CallManager.hangup(it) } },
             digit = { d ->
                 if (typed.length < 40) typed += d
-                CallManager.primary()?.let { CallManager.dtmf(it, d[0]) }
+                primary?.let { CallManager.dtmf(it, d[0]) }
             },
         )
         CallContent(ui, act, look, palette, insets = true)
+        IncomingBanner(
+            visible = bannerMode,
+            name = ringLookup.name ?: ringInfo?.displayName ?: PhoneFormat.format(ringInfo?.number.orEmpty()).ifEmpty { stringResource(R.string.unknown) },
+            number = ringInfo?.number.orEmpty(),
+            photo = ringLookup.photo,
+            decline = palette.decline,
+            accept = palette.accept,
+            onExpand = { expanded = true },
+            onDecline = { ringingCall?.let { CallManager.reject(it) } },
+            onAccept = { ringingCall?.let { CallManager.answer(it) } },
+        )
 
         val replies = AppSettings.quickReplies ?: listOf(
             stringResource(R.string.qr_1),
@@ -186,18 +207,18 @@ fun InCallScreen(onFinish: () -> Unit, onAddCall: () -> Unit, onMessage: (String
         val replyItems = remember(replies, customLabel, shown.number) {
             replies.map { text ->
                 text to {
-                    CallManager.primary()?.let { CallManager.reject(it) }
+                    CallManager.ringing()?.let { CallManager.reject(it) }
                     QuickReply.send(context, shown.number, text)
                 }
             } + (customLabel to {
-                CallManager.primary()?.let { CallManager.reject(it) }
+                CallManager.ringing()?.let { CallManager.reject(it) }
                 onMessage(shown.number)
             })
         }
         val remindItems = listOf(5, 15, 60).map { minutes ->
             val label = if (minutes < 60) stringResource(R.string.remind_in_min, minutes) else stringResource(R.string.remind_in_hour)
             label to {
-                CallManager.primary()?.let { CallManager.reject(it) }
+                CallManager.ringing()?.let { CallManager.reject(it) }
                 CallReminder.schedule(context, shown.number, shown.name, minutes)
             }
         }
