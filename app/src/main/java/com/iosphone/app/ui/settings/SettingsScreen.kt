@@ -271,6 +271,15 @@ fun SettingsScreen() {
             SectionHeader(stringResource(R.string.recording_section))
             Card {
                 ToggleRow(stringResource(R.string.auto_record), AppSettings.autoRecord) { AppSettings.changeAutoRecord(it) }
+                NavRow(stringResource(R.string.share_rec_log)) {
+                    val text = runCatching {
+                        java.io.File(ctx.filesDir, "recording.log").readText().takeLast(12000)
+                    }.getOrDefault("").ifBlank { ctx.getString(R.string.rec_log_empty) }
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(android.content.Intent.EXTRA_TEXT, text)
+                    ctx.startActivity(android.content.Intent.createChooser(send, null))
+                }
             }
             BasicText(
                 stringResource(R.string.auto_record_footer),
