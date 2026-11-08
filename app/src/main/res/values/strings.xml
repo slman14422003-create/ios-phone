@@ -239,4 +239,6 @@
     <string name="vibrate_end">Vibrate on end</string>
     <string name="vignette">Vignette</string>
     <string name="voicemail_settings">Voicemail settings</string>
+    <string name="share_rec_log">Share recording log</string>
+    <string name="rec_log_empty">No recording log yet. Make a call with recording on first.</string>
 </resources>

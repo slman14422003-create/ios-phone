@@ -239,4 +239,6 @@
     <string name="vibrate_end">اهتزاز عند الإنهاء</string>
     <string name="vignette">التظليل</string>
     <string name="voicemail_settings">إعدادات البريد الصوتي</string>
+    <string name="share_rec_log">مشاركة سجل التسجيل</string>
+    <string name="rec_log_empty">لا يوجد سجل بعد. أجرِ مكالمة والتسجيل مفعّل أولاً.</string>
 </resources>
