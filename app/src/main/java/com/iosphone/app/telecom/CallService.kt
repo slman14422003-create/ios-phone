@@ -6,6 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Person
 import android.content.Intent
+import android.graphics.BitmapFactory
+import android.graphics.drawable.Icon
+import android.net.Uri
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioDeviceInfo
@@ -162,21 +165,32 @@ class CallService : InCallService() {
             return
         }
         worker.execute {
-            val found = runCatching { ContactLookup.find(this, number).name }.getOrNull()
+            val info = runCatching { ContactLookup.find(this, number) }.getOrNull()
+            val icon = photoIcon(info?.photo)
             main.post {
                 if (call.state == Call.STATE_RINGING) {
-                    postIncoming(call, found ?: PhoneFormat.format(number).ifEmpty { getString(R.string.unknown) })
+                    postIncoming(call, info?.name ?: PhoneFormat.format(number).ifEmpty { getString(R.string.unknown) }, icon)
                 }
             }
         }
     }
 
-    private fun postIncoming(call: Call, name: String) {
+    private fun photoIcon(photo: String?): Icon? {
+        if (photo.isNullOrEmpty()) return null
+        return runCatching {
+            contentResolver.openInputStream(Uri.parse(photo))?.use { BitmapFactory.decodeStream(it) }?.let { Icon.createWithBitmap(it) }
+        }.getOrNull()
+    }
+
+    private fun postIncoming(call: Call, name: String, icon: Icon? = null) {
         val nm = getSystemService(NotificationManager::class.java)
-        val channel = NotificationChannel(CHANNEL_ID, getString(R.string.incoming_channel), NotificationManager.IMPORTANCE_HIGH)
-        channel.setSound(null, null)
-        channel.enableVibration(false)
-        nm.createNotificationChannel(channel)
+        if (!channelReady) {
+            val channel = NotificationChannel(CHANNEL_ID, getString(R.string.incoming_channel), NotificationManager.IMPORTANCE_HIGH)
+            channel.setSound(null, null)
+            channel.enableVibration(false)
+            nm.createNotificationChannel(channel)
+            channelReady = true
+        }
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val uiFlags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         val open = PendingIntent.getActivity(
@@ -192,7 +206,7 @@ class CallService : InCallService() {
             Intent(this, CallActionReceiver::class.java).setAction(CallActionReceiver.ACTION_DECLINE),
             flags,
         )
-        val person = Person.Builder().setName(name).setImportant(true).build()
+        val person = Person.Builder().setName(name).setImportant(true).apply { if (icon != null) setIcon(icon) }.build()
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_call)
             .setContentIntent(open)
@@ -209,5 +223,8 @@ class CallService : InCallService() {
     companion object {
         const val CHANNEL_ID = "incoming_calls"
         const val NOTIFICATION_ID = 4101
+
+        @Volatile
+        private var channelReady = false
     }
 }

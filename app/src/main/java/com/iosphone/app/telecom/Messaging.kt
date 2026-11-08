@@ -21,9 +21,10 @@ object Messaging {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (!body.isNullOrEmpty()) intent.putExtra("sms_body", body)
         if (installed(context)) intent.setPackage(PACKAGE)
-        if (runCatching { context.startActivity(intent) }.isFailure && intent.`package` != null) {
+        intent.putExtra(Transitions.EXTRA_RETURN, true)
+        if (!Transitions.start(context, intent) && intent.`package` != null) {
             intent.setPackage(null)
-            runCatching { context.startActivity(intent) }
+            Transitions.start(context, intent)
         }
     }
 }

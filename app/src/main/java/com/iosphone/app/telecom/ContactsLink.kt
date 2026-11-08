@@ -20,15 +20,16 @@ object ContactsLink {
     private fun launch(context: Context, intent: Intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (installed(context)) intent.setPackage(PACKAGE)
-        if (runCatching { context.startActivity(intent) }.isFailure && intent.`package` != null) {
+        intent.putExtra(Transitions.EXTRA_RETURN, true)
+        if (!Transitions.start(context, intent) && intent.`package` != null) {
             intent.setPackage(null)
-            runCatching { context.startActivity(intent) }
+            Transitions.start(context, intent)
         }
     }
 
     fun openList(context: Context) {
         val own = context.packageManager.getLaunchIntentForPackage(PACKAGE)
-        if (own != null && runCatching { context.startActivity(own) }.isSuccess) return
+        if (own != null && Transitions.start(context, own)) return
         val generic = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CONTACTS)
         launch(context, generic)
     }

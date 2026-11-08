@@ -9,7 +9,12 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.CallLog
 import android.provider.ContactsContract
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
@@ -29,6 +34,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.iosphone.app.util.PhoneFormat
 
 class AppData {
+    private val lock = Mutex()
+
     var contacts by mutableStateOf<List<Contact>>(emptyList())
         private set
     var calls by mutableStateOf<List<CallEntry>>(emptyList())
@@ -40,6 +47,7 @@ class AppData {
     var resumeCount by mutableIntStateOf(0)
         private set
     private var index: Map<String, Contact> = emptyMap()
+    private var idIndex: Map<Long, Contact> = emptyMap()
     private var lastRefresh = 0L
     private var grantMask = -1
 
@@ -58,7 +66,7 @@ class AppData {
         if (mask != grantMask || stale) version++
     }
 
-    suspend fun refresh(context: Context) {
+    suspend fun refresh(context: Context) = lock.withLock {
         grantMask = grantMask(context)
         val canContacts = granted(context, Manifest.permission.READ_CONTACTS)
         val canCalls = granted(context, Manifest.permission.READ_CALL_LOG)
@@ -83,6 +91,7 @@ class AppData {
                 for (ct in c) for (p in ct.phones) map.putIfAbsent(PhoneFormat.key(p.number), ct)
                 map
             }
+            idIndex = withContext(Dispatchers.Default) { c.associateBy { it.id } }
             contacts = c
         }
         if (callsChanged) calls = l
@@ -90,9 +99,19 @@ class AppData {
         loaded = true
     }
 
+    companion object {
+        val shared = AppData()
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+        fun warm(context: Context) {
+            val app = context.applicationContext
+            scope.launch { runCatching { shared.refresh(app) } }
+        }
+    }
+
     fun contactFor(number: String): Contact? = if (number.isEmpty()) null else index[PhoneFormat.key(number)]
 
-    fun contactById(id: Long): Contact? = contacts.firstOrNull { it.id == id }
+    fun contactById(id: Long): Contact? = idIndex[id]
 
     private fun granted(context: Context, permission: String): Boolean =
         context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
@@ -114,7 +133,7 @@ val LocalAppData = staticCompositionLocalOf<AppData> { error("AppData missing") 
 @Composable
 fun rememberAppData(): AppData {
     val context = LocalContext.current
-    val data = remember { AppData() }
+    val data = AppData.shared
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
