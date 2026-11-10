@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         AppSettings.init(this)
         Transitions.install(this)
+        com.iosphone.app.util.SmoothDisplay.apply(this)
         AppData.warm(this)
         vm.nav.onEmpty = { finish() }
         enableEdgeToEdge()

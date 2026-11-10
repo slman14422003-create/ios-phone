@@ -81,6 +81,17 @@ import com.iosphone.app.ui.theme.IosType
 import com.iosphone.app.util.Formats
 import com.iosphone.app.util.PhoneFormat
 import kotlinx.coroutines.launch
+import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntOffset
+import com.iosphone.app.domain.CallIntel
+import com.iosphone.app.telecom.Messaging
+import com.iosphone.app.ui.common.QuickMenu
 
 private class CallGroup(val first: CallEntry, val ids: List<Long>) {
     val count: Int get() = ids.size
@@ -137,6 +148,29 @@ private fun CallsContent() {
         )
     }
     val favorites = remember(data.contacts) { data.contacts.filter { it.starred && it.phones.isNotEmpty() } }
+    val view = LocalView.current
+    val suggested = remember(data.calls, data.contacts, favorites) {
+        val favIds = favorites.map { it.id }.toHashSet()
+        val seen = HashSet<Long>()
+        val out = ArrayList<Pair<Contact, String>>()
+        for (pick in CallIntel.suggestions(data.calls, limit = 12)) {
+            val c = data.contactFor(pick.number) ?: continue
+            if (c.id in favIds || !seen.add(c.id)) continue
+            out.add(c to pick.number)
+            if (out.size >= 8) break
+        }
+        out
+    }
+    val unreturned = remember(data.calls) { CallIntel.unreturnedMissed(data.calls) }
+    val spamKeys = remember(data.calls, data.contacts) { CallIntel.spamNumbers(data.calls) { data.contactFor(it) != null } }
+    val suggestedLabel = stringResource(R.string.suggested_title)
+    val notReturnedLabel = stringResource(R.string.not_returned)
+    val spamLabel = stringResource(R.string.possible_spam)
+    val callActionLabel = stringResource(R.string.call_action)
+    val messageActionLabel = stringResource(R.string.send_message)
+    val rowPlacement = remember {
+        spring<IntOffset>(dampingRatio = 1f, stiffness = 700f, visibilityThreshold = IntOffset.VisibilityThreshold)
+    }
     var isDefault by remember(data.resumeCount) { mutableStateOf(DefaultDialer.isDefault(context)) }
     val roleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         isDefault = DefaultDialer.isDefault(context)
@@ -235,6 +269,24 @@ private fun CallsContent() {
                 }
             }
         }
+        if (filter == 0 && !editing && suggested.isNotEmpty()) {
+            item(key = "suggested") {
+                Column(Modifier.padding(bottom = 8.dp)) {
+                    BasicText(
+                        suggestedLabel,
+                        style = IosType.footnote.copy(color = colors.secondaryLabel, fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 8.dp),
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        items(suggested, key = { it.first.id }) { (c, number) -> FavoriteChip(c) { call(number) } }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
         if (data.loaded && groups.isEmpty()) {
             item(key = "empty") {
                 BasicText(
@@ -246,23 +298,45 @@ private fun CallsContent() {
         }
         items(groups, key = { it.first.id }, contentType = { "call" }) { g ->
             val contact = data.contactFor(g.first.number)
-            Box(Modifier.animateItem()) {
-            CallRow(
-                g = g,
-                contact = contact,
-                editing = editing,
-                onClick = { call(g.first.number) },
-                onInfo = {
-                    if (contact != null) ContactsLink.openContact(context, contact.id)
-                    else nav.push(Route.CallInfo(g.first.number))
-                },
-                onDelete = {
-                    scope.launch {
-                        CallLogRepository.delete(context, g.ids)
-                        data.invalidate()
-                    }
-                },
-            )
+            var menu by remember { mutableStateOf(false) }
+            val hint = when {
+                g.first.id in unreturned -> notReturnedLabel
+                contact == null && g.first.name == null && PhoneFormat.key(g.first.number) in spamKeys -> spamLabel
+                else -> null
+            }
+            Box(Modifier.animateItem(placementSpec = rowPlacement)) {
+                CallRow(
+                    g = g,
+                    contact = contact,
+                    editing = editing,
+                    hint = hint,
+                    hintIsSpam = hint == spamLabel,
+                    onClick = { call(g.first.number) },
+                    onLongClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        menu = true
+                    },
+                    onInfo = {
+                        if (contact != null) ContactsLink.openContact(context, contact.id)
+                        else nav.push(Route.CallInfo(g.first.number))
+                    },
+                    onDelete = {
+                        scope.launch {
+                            CallLogRepository.delete(context, g.ids)
+                            data.invalidate()
+                        }
+                    },
+                )
+                QuickMenu(
+                    expanded = menu,
+                    onDismiss = { menu = false },
+                    contact = contact,
+                    number = g.first.number,
+                    extra = listOf(
+                        MenuItem(callActionLabel, icon = Icons.Filled.Call) { call(g.first.number) },
+                        MenuItem(messageActionLabel, icon = Icons.Filled.ChatBubble) { Messaging.open(context, g.first.number) },
+                    ),
+                )
             }
         }
     }
@@ -286,12 +360,16 @@ private fun FavoriteChip(c: Contact, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CallRow(
     g: CallGroup,
     contact: Contact?,
     editing: Boolean,
+    hint: String?,
+    hintIsSpam: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onInfo: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -307,7 +385,7 @@ private fun CallRow(
         e.isOutgoing -> Icons.AutoMirrored.Filled.CallMade
         else -> Icons.AutoMirrored.Filled.CallReceived
     }
-    Column(Modifier.fillMaxWidth().clickable(enabled = !editing, onClick = onClick)) {
+    Column(Modifier.fillMaxWidth().combinedClickable(enabled = !editing, onClick = onClick, onLongClick = onLongClick)) {
         Row(
             Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -333,6 +411,13 @@ private fun CallRow(
                     Image(icon, null, Modifier.size(14.dp), colorFilter = ColorFilter.tint(colors.secondaryLabel))
                     Spacer(Modifier.width(4.dp))
                     BasicText(label, style = IosType.callout.copy(color = colors.secondaryLabel), maxLines = 1)
+                    if (hint != null) {
+                        BasicText(
+                            "  " + hint,
+                            style = IosType.callout.copy(color = if (hintIsSpam) colors.red else colors.secondaryLabel),
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
             BasicText(Formats.callDate(e.date), style = IosType.callout.copy(color = colors.secondaryLabel))

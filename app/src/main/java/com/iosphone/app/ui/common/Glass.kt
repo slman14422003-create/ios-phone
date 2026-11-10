@@ -252,6 +252,7 @@ fun GlassMenu(
     alignment: Alignment = Alignment.TopEnd,
     offsetY: Dp = 52.dp,
     width: Dp = 250.dp,
+    positionProvider: androidx.compose.ui.window.PopupPositionProvider? = null,
 ) {
     DisposableEffect(expanded) {
         if (expanded) ScreenBlur.count++
@@ -263,13 +264,12 @@ fun GlassMenu(
     val offset = with(density) { IntOffset(0, offsetY.roundToPx()) }
     val visible = remember { MutableTransitionState(false).apply { targetState = true } }
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val origin = if (alignment == Alignment.BottomCenter) TransformOrigin(0.5f, 1f) else TransformOrigin(if (rtl) 0f else 1f, 0f)
-    Popup(
-        alignment = alignment,
-        offset = offset,
-        onDismissRequest = onDismiss,
-        properties = PopupProperties(focusable = true),
-    ) {
+    val origin = when {
+        positionProvider != null -> TransformOrigin(0.5f, 0.5f)
+        alignment == Alignment.BottomCenter -> TransformOrigin(0.5f, 1f)
+        else -> TransformOrigin(if (rtl) 0f else 1f, 0f)
+    }
+    val body: @Composable () -> Unit = {
         AnimatedVisibility(
             visibleState = visible,
             enter = fadeIn(tween(140)) + scaleIn(
@@ -318,5 +318,21 @@ fun GlassMenu(
                 }
             }
         }
+    }
+    if (positionProvider != null) {
+        Popup(
+            popupPositionProvider = positionProvider,
+            onDismissRequest = onDismiss,
+            properties = PopupProperties(focusable = true),
+            content = body,
+        )
+    } else {
+        Popup(
+            alignment = alignment,
+            offset = offset,
+            onDismissRequest = onDismiss,
+            properties = PopupProperties(focusable = true),
+            content = body,
+        )
     }
 }

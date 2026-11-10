@@ -44,6 +44,12 @@ import com.iosphone.app.ui.theme.IosType
 import com.iosphone.app.util.Formats
 import com.iosphone.app.util.PhoneFormat
 import kotlinx.coroutines.launch
+import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import com.iosphone.app.domain.CallIntel
+import com.iosphone.app.util.QuickCopy
 
 @Composable
 fun CallDetailScreen(number: String) {
@@ -53,6 +59,11 @@ fun CallDetailScreen(number: String) {
     val nav = LocalNav.current
     val call = rememberCaller()
     val scope = rememberCoroutineScope()
+    val view = LocalView.current
+    val likelySpam = remember(data.calls, data.contacts, number) {
+        data.contactFor(number) == null &&
+            PhoneFormat.key(number) in CallIntel.spamNumbers(data.calls) { data.contactFor(it) != null }
+    }
     val history = remember(data.calls, number) {
         data.calls.filter { PhoneFormat.key(it.number) == PhoneFormat.key(number) }
     }
@@ -74,8 +85,20 @@ fun CallDetailScreen(number: String) {
             BasicText(
                 PhoneFormat.format(number).ifEmpty { stringResource(R.string.unknown) },
                 style = IosType.title1.copy(color = colors.label, textAlign = TextAlign.Center).ltr(),
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.padding(horizontal = 24.dp).pointerInput(number) {
+                    detectTapGestures(onLongPress = {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        QuickCopy.number(context, number)
+                    })
+                },
             )
+            if (likelySpam) {
+                BasicText(
+                    stringResource(R.string.possible_spam),
+                    style = IosType.footnote.copy(color = colors.red),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 22.dp),

@@ -39,13 +39,23 @@ import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
 import com.iosphone.app.util.Formats
 import com.iosphone.app.util.PhoneFormat
+import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
+import com.iosphone.app.ui.common.QuickMenu
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(query: String) {
     val colors = Ios.colors
     val data = LocalAppData.current
     val nav = LocalNav.current
     val context = androidx.compose.ui.platform.LocalContext.current
+    val view = LocalView.current
     val call = rememberCaller()
     val q = query.trim()
     val digits = q.filter { it.isDigit() || it == '+' }
@@ -55,10 +65,12 @@ fun SearchScreen(query: String) {
             emptyList<CallEntry>()
         } else {
             val seen = HashSet<String>()
+            val nq = ContactSearch.normalize(q)
+            val qd = ContactSearch.normalize(digits).filter { it.isDigit() }
             data.calls.filter { e ->
                 val name = data.contactFor(e.number)?.name ?: e.name.orEmpty()
-                val hit = name.contains(q, ignoreCase = true) ||
-                    (digits.length >= 2 && e.number.filter { it.isDigit() }.contains(digits.filter { it.isDigit() }))
+                val hit = ContactSearch.normalize(name).contains(nq) ||
+                    (qd.length >= 2 && e.number.filter { it.isDigit() }.contains(qd))
                 hit && seen.add(PhoneFormat.key(e.number))
             }.take(15)
         }
@@ -92,8 +104,18 @@ fun SearchScreen(query: String) {
         }
         if (contacts.isNotEmpty()) {
             item(key = "ch") { SectionTitle(stringResource(R.string.contacts_title)) }
-            items(contacts, key = { "c" + it.id }) { c ->
-                Column(Modifier.fillMaxWidth().clickable { com.iosphone.app.telecom.ContactsLink.openContact(context, c.id) }) {
+            items(contacts, key = { "c" + it.id }, contentType = { "contact" }) { c ->
+                var menu by remember { mutableStateOf(false) }
+                Column(
+                    Modifier.fillMaxWidth().combinedClickable(
+                        onClick = { com.iosphone.app.telecom.ContactsLink.openContact(context, c.id) },
+                        onLongClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            menu = true
+                        },
+                    ),
+                ) {
+                    QuickMenu(expanded = menu, onDismiss = { menu = false }, contact = c, number = null)
                     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Avatar(c.name, c.thumbUri, 38.dp)
                         Spacer(Modifier.width(12.dp))
@@ -110,9 +132,19 @@ fun SearchScreen(query: String) {
         }
         if (recents.isNotEmpty()) {
             item(key = "rh") { SectionTitle(stringResource(R.string.calls_title)) }
-            items(recents, key = { "r" + it.id }) { e ->
+            items(recents, key = { "r" + it.id }, contentType = { "recent" }) { e ->
                 val contact = data.contactFor(e.number)
-                Column(Modifier.fillMaxWidth().clickable { call(e.number) }) {
+                var menu by remember { mutableStateOf(false) }
+                Column(
+                    Modifier.fillMaxWidth().combinedClickable(
+                        onClick = { call(e.number) },
+                        onLongClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            menu = true
+                        },
+                    ),
+                ) {
+                    QuickMenu(expanded = menu, onDismiss = { menu = false }, contact = contact, number = e.number)
                     Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             BasicText(

@@ -244,4 +244,17 @@
     <string name="rec_a11y">Call audio access</string>
     <string name="a11y_desc">Lets Android allow call recording on this phone. This service does not read your screen.</string>
     <string name="rec_speaker">Speaker while recording (captures the other person)</string>
+    <string name="copied">Copied</string>
+    <string name="copy_number">Copy Number</string>
+    <string name="copy_name">Copy Name</string>
+    <string name="copy_email">Copy Email</string>
+    <string name="copy_contact">Copy Contact</string>
+    <string name="copy_x">Copy %1$s</string>
+    <string name="clip_number_title">Number on clipboard</string>
+    <string name="clip_save">Save</string>
+    <string name="suggested_title">Suggested</string>
+    <string name="not_returned">Not returned</string>
+    <string name="possible_spam">Possible spam</string>
+    <string name="call_action">Call</string>
+    <string name="paste_x">Paste %1$s</string>
 </resources>

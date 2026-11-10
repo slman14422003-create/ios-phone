@@ -95,6 +95,9 @@ import com.iosphone.app.ui.common.Route
 import com.iosphone.app.ui.common.VOICEMAIL
 import com.iosphone.app.ui.common.glass
 import com.iosphone.app.ui.common.pressable
+import androidx.compose.material.icons.filled.ContentPaste
+import com.iosphone.app.ui.common.rememberClipboardNumber
+import com.iosphone.app.util.QuickCopy
 import com.iosphone.app.ui.common.rememberCaller
 import com.iosphone.app.ui.theme.Ios
 import com.iosphone.app.ui.theme.IosType
@@ -150,6 +153,7 @@ fun KeypadScreen(initialNumber: String?) {
     LaunchedEffect(initialNumber) {
         if (!initialNumber.isNullOrEmpty()) raw = PhoneFormat.digits(initialNumber)
     }
+    val clipNumber = rememberClipboardNumber()
     val suggestion by produceState<Suggestion?>(null, raw, data.contacts) {
         if (raw.isEmpty()) {
             value = null
@@ -247,15 +251,21 @@ fun KeypadScreen(initialNumber: String?) {
                     onDismiss = { pasteMenu = false },
                     alignment = Alignment.BottomCenter,
                     offsetY = 8.dp,
-                    width = 160.dp,
-                    items = listOf(
-                        MenuItem(stringResource(R.string.paste)) {
-                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val text = cm.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
-                            val digits = PhoneFormat.digits(text).take(40)
-                            if (digits.isNotEmpty()) raw = digits
-                        },
-                    ),
+                    width = 200.dp,
+                    items = buildList {
+                        add(
+                            MenuItem(stringResource(R.string.paste)) {
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val text = cm.primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
+                                val digits = PhoneFormat.digits(text).take(40)
+                                if (digits.isNotEmpty()) raw = digits
+                            },
+                        )
+                        if (raw.isNotEmpty()) {
+                            val typed = raw
+                            add(MenuItem(stringResource(R.string.copy_number)) { QuickCopy.number(context, typed) })
+                        }
+                    },
                 )
             }
             Box(Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
@@ -292,6 +302,23 @@ fun KeypadScreen(initialNumber: String?) {
                                     colors.secondaryLabel,
                                 ),
                                 style = IosType.body,
+                                maxLines = 1,
+                            )
+                        }
+                    } else if (raw.isEmpty() && clipNumber != null) {
+                        Row(
+                            Modifier
+                                .pressable(pressedScale = 0.97f) { raw = PhoneFormat.digits(clipNumber).take(40) }
+                                .glass(RoundedCornerShape(26.dp))
+                                .height(48.dp)
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Image(Icons.Filled.ContentPaste, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(colors.label))
+                            Spacer(Modifier.width(10.dp))
+                            BasicText(
+                                stringResource(R.string.paste_x, PhoneFormat.format(clipNumber)),
+                                style = IosType.body.copy(color = colors.label).ltr(),
                                 maxLines = 1,
                             )
                         }
