@@ -3,6 +3,7 @@ package com.iosphone.app.ui.common
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,7 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,13 +90,11 @@ fun SimPickerHost() {
         lastNumber = it
         lastSims = SimPicker.sims
     }
-    DisposableEffect(open) {
-        if (open) ScreenBlur.count++
-        onDispose { if (open) ScreenBlur.count-- }
-    }
     if (!visible.currentState && !visible.targetState) return
 
-    val sheetTint = if (colors.dark) Color(0x8C1F1F23) else Color(0x99FFFFFF)
+    // Cheap scrim + opaque-ish glass: animating a full-screen blur and two BlurViews made opening this sheet lag.
+    val scrim by animateFloatAsState(if (open) 0.42f else 0f, tween(220), label = "simScrim")
+    val sheetTint = if (colors.dark) Color(0xF01E1E22) else Color(0xF2F6F6F8)
     val sheetShape = RoundedCornerShape(36.dp)
     val edge = Brush.verticalGradient(
         if (colors.dark) listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.06f))
@@ -103,9 +102,14 @@ fun SimPickerHost() {
     )
 
     BackHandler(enabled = open) { SimPicker.dismiss() }
+    CompositionLocalProvider(LocalBlurTarget provides null) {
     Box(Modifier.fillMaxSize()) {
-        // Catches taps outside the sheet; the blur/dim itself comes from ScreenBlur.
-        Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { SimPicker.dismiss() } })
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = scrim))
+                .pointerInput(Unit) { detectTapGestures { SimPicker.dismiss() } },
+        )
         AnimatedVisibility(
             visibleState = visible,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -163,6 +167,7 @@ fun SimPickerHost() {
                 }
             }
         }
+    }
     }
 }
 

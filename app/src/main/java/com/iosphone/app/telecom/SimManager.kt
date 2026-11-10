@@ -24,7 +24,24 @@ class SimInfo(
 private val PALETTE = longArrayOf(0xFFFF9500, 0xFFAF52DE, 0xFF5AC8FA, 0xFFFF2D55, 0xFF5856D6, 0xFF8E8E93)
 
 object SimManager {
+    @Volatile private var cache: List<SimInfo>? = null
+    @Volatile private var cachedAt = 0L
+
+    /** Telephony lookups are several binder calls per SIM; cache briefly so tapping call never stalls the UI. */
     fun list(context: Context): List<SimInfo> {
+        val now = android.os.SystemClock.elapsedRealtime()
+        cache?.let { if (now - cachedAt < 15_000L && it.isNotEmpty()) return it }
+        val fresh = query(context)
+        cache = fresh
+        cachedAt = now
+        return fresh
+    }
+
+    fun invalidate() {
+        cache = null
+    }
+
+    private fun query(context: Context): List<SimInfo> {
         if (context.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
             return emptyList()
         }
