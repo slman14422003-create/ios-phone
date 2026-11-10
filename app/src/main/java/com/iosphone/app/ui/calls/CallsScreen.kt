@@ -82,6 +82,7 @@ import com.iosphone.app.util.Formats
 import com.iosphone.app.util.PhoneFormat
 import kotlinx.coroutines.launch
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
