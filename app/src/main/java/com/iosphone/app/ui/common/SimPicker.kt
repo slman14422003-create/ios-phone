@@ -24,10 +24,11 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -95,7 +96,7 @@ fun SimPickerHost() {
     if (!visible.currentState && !visible.targetState) return
 
     val sheetTint = if (colors.dark) Color(0x8C1F1F23) else Color(0x99FFFFFF)
-    val sheetShape = RoundedCornerShape(34.dp)
+    val sheetShape = RoundedCornerShape(36.dp)
     val edge = Brush.verticalGradient(
         if (colors.dark) listOf(Color.White.copy(alpha = 0.30f), Color.White.copy(alpha = 0.06f))
         else listOf(Color.White, Color.Black.copy(alpha = 0.06f)),
@@ -122,7 +123,7 @@ fun SimPickerHost() {
                 GlassBox(sheetShape, Modifier.fillMaxWidth(), blurRadius = 32f, overlay = sheetTint) {
                     Column(Modifier.fillMaxWidth().border(0.8.dp, edge, sheetShape)) {
                         Column(
-                            Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 10.dp, start = 20.dp, end = 20.dp),
+                            Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 14.dp, start = 20.dp, end = 20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             BasicText(
@@ -139,7 +140,7 @@ fun SimPickerHost() {
                             }
                         }
                         lastSims.forEachIndexed { i, sim ->
-                            Box(Modifier.padding(start = 20.dp).fillMaxWidth().height(0.5.dp).background(colors.separator))
+                            Box(Modifier.padding(start = 78.dp).fillMaxWidth().height(0.5.dp).background(colors.separator))
                             SimRow(sim) {
                                 placeCall(context, lastNumber, sim.handle)
                                 SimPicker.dismiss()
@@ -149,8 +150,8 @@ fun SimPickerHost() {
                 }
                 Spacer(Modifier.height(10.dp))
                 GlassBox(
-                    RoundedCornerShape(30.dp),
-                    Modifier.fillMaxWidth().height(60.dp).pressable(pressedScale = 0.97f) { SimPicker.dismiss() },
+                    RoundedCornerShape(36.dp),
+                    Modifier.fillMaxWidth().height(62.dp).pressable(pressedScale = 0.97f) { SimPicker.dismiss() },
                     contentAlignment = Alignment.Center,
                     blurRadius = 32f,
                     overlay = sheetTint,
@@ -172,17 +173,27 @@ private fun SimRow(sim: SimInfo, onClick: () -> Unit) {
     val slotText = stringResource(R.string.sim_n, sim.slot + 1)
     val number = sim.number?.let { PhoneFormat.format(it) }
     Row(
-        Modifier.fillMaxWidth().height(72.dp).iosRow(onClick).padding(horizontal = 20.dp),
+        Modifier.fillMaxWidth().height(76.dp).iosRow(onClick).padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // iOS-style SIM badge: coloured rounded tile with the slot number.
         Box(
             Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(Brush.verticalGradient(listOf(base.copy(alpha = 0.95f), base.copy(alpha = 0.70f)))),
+                .size(46.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Brush.verticalGradient(listOf(base.copy(alpha = 1f), base.copy(alpha = 0.72f)))),
             contentAlignment = Alignment.Center,
         ) {
-            Image(Icons.Filled.SimCard, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(Color.White))
+            Image(
+                Icons.Filled.SimCard,
+                null,
+                Modifier.size(30.dp),
+                colorFilter = ColorFilter.tint(Color.White.copy(alpha = 0.28f)),
+            )
+            BasicText(
+                (sim.slot + 1).toString(),
+                style = IosType.headline.copy(color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+            )
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -193,14 +204,15 @@ private fun SimRow(sim: SimInfo, onClick: () -> Unit) {
             )
             val sub = listOfNotNull(slotText.takeIf { sim.label != slotText }, number).joinToString("  ·  ")
             if (sub.isNotEmpty()) {
+                Spacer(Modifier.height(1.dp))
                 BasicText(sub, style = IosType.footnote.copy(color = colors.secondaryLabel).autoDir(), maxLines = 1)
             }
         }
-        Image(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            null,
-            Modifier.size(22.dp),
-            colorFilter = ColorFilter.tint(colors.secondaryLabel.copy(alpha = 0.6f)),
-        )
+        Box(
+            Modifier.size(34.dp).clip(CircleShape).background(colors.green),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(Icons.Filled.Call, null, Modifier.size(18.dp), colorFilter = ColorFilter.tint(Color.White))
+        }
     }
 }

@@ -43,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -215,18 +216,20 @@ fun KeypadScreen(initialNumber: String?) {
 
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(
-                Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 24.dp),
+                Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 18.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AnimatedVisibility(visible = raw.isNotEmpty(), enter = enter, exit = exit) {
-                    GlassIconButton(
-                        icon = Icons.Filled.PersonAdd,
-                        onClick = { com.iosphone.app.telecom.ContactsLink.create(context, raw) },
-                        size = 48.dp,
-                        iconSize = 22.dp,
-                        tint = colors.tint,
-                    )
+                    Box(Modifier.padding(8.dp)) {
+                        GlassIconButton(
+                            icon = Icons.Filled.PersonAdd,
+                            onClick = { com.iosphone.app.telecom.ContactsLink.create(context, raw) },
+                            size = 48.dp,
+                            iconSize = 22.dp,
+                            tint = colors.tint,
+                        )
+                    }
                 }
             }
             val shownNumber = remember(raw) { PhoneFormat.format(raw) }
@@ -251,7 +254,7 @@ fun KeypadScreen(initialNumber: String?) {
                     onDismiss = { pasteMenu = false },
                     alignment = Alignment.BottomCenter,
                     offsetY = 8.dp,
-                    width = 200.dp,
+                    width = 230.dp,
                     items = buildList {
                         add(
                             MenuItem(stringResource(R.string.paste)) {
@@ -264,6 +267,11 @@ fun KeypadScreen(initialNumber: String?) {
                         if (raw.isNotEmpty()) {
                             val typed = raw
                             add(MenuItem(stringResource(R.string.copy_number)) { QuickCopy.number(context, typed) })
+                            add(
+                                MenuItem(stringResource(R.string.send_message), icon = Icons.Filled.ChatBubble) {
+                                    com.iosphone.app.telecom.Messaging.open(context, typed)
+                                },
+                            )
                         }
                     },
                 )
@@ -385,7 +393,7 @@ fun KeypadScreen(initialNumber: String?) {
                             onDismiss = { simMenu = false },
                             alignment = Alignment.TopStart,
                             offsetY = (-(sims.size * 46 + 28)).dp,
-                            width = 230.dp,
+                            width = 250.dp,
                             items = sims.map { sim ->
                                 MenuItem(sim.label + "  ·  " + stringResource(R.string.sim_n, sim.slot + 1), checked = sim.id == activeSim.id) { simId = sim.id }
                             },
@@ -471,17 +479,12 @@ private fun DeleteButton(size: Dp, onDelete: (Int) -> Unit, scope: CoroutineScop
             },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier.width(46.dp).height(34.dp).clip(RoundedCornerShape(8.dp)).background(colors.fill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Image(
-                imageVector = Icons.AutoMirrored.Filled.Backspace,
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(colors.label),
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        Image(
+            imageVector = Icons.AutoMirrored.Filled.Backspace,
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(colors.label.copy(alpha = 0.88f)),
+            modifier = Modifier.size(32.dp),
+        )
     }
 }
 
