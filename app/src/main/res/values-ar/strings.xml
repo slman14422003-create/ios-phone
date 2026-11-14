@@ -236,4 +236,8 @@
     <string name="silence_unknown">كتم المتصلين المجهولين</string>
     <string name="silence_unknown_footer">المكالمات من أرقام ليست في جهات الاتصال تُكتم وتظهر في السجل</string>
     <string name="swipe_delete">حذف</string>
+    <string name="ongoing_channel">المكالمة الجارية</string>
+    <string name="ongoing_active">اضغط للعودة إلى المكالمة</string>
+    <string name="ongoing_hold">قيد الانتظار · اضغط للعودة</string>
+    <string name="ongoing_dialing">جارٍ الاتصال… اضغط للعودة</string>
 </resources>

@@ -59,6 +59,7 @@ class CallService : InCallService() {
 
     override fun onDestroy() {
         main.removeCallbacksAndMessages(silenceToken)
+        getSystemService(NotificationManager::class.java)?.cancel(ONGOING_ID)
         stopRingExtras()
         io?.shutdownNow()
         io = null
@@ -81,11 +82,13 @@ class CallService : InCallService() {
         } else {
             openUi()
         }
+        syncOngoing()
     }
 
     override fun onCallRemoved(call: Call) {
         CallManager.remove(call)
         if (CallManager.calls.isEmpty()) CallManager.openOnActive = false
+        syncOngoing()
         if (notifiedCall === call) notifiedCall = null
         syncIncoming()
         refreshProximity()
@@ -100,6 +103,7 @@ class CallService : InCallService() {
     }
 
     fun onStateEvent(state: Int) {
+        syncOngoing()
         if (state == Call.STATE_ACTIVE && CallManager.openOnActive) {
             CallManager.openOnActive = false
             if (!CallManager.uiVisible) openUi()
@@ -235,6 +239,80 @@ class CallService : InCallService() {
         }
     }
 
+    private val nameCache = HashMap<String, String?>()
+
+    fun syncOngoing() {
+        val nm = getSystemService(NotificationManager::class.java) ?: return
+        val call = CallManager.ongoing()
+        if (call == null) {
+            nm.cancel(ONGOING_ID)
+            return
+        }
+        val number = CallManager.info(call).number
+        if (nameCache.containsKey(number)) {
+            postOngoing(call, nameCache[number])
+            return
+        }
+        postOngoing(call, null)
+        val worker = io ?: return
+        worker.execute {
+            val name = runCatching { ContactLookup.find(this, number).name }.getOrNull()
+            main.post {
+                nameCache[number] = name
+                if (CallManager.ongoing() === call) postOngoing(call, name)
+            }
+        }
+    }
+
+    private fun postOngoing(call: Call, contactName: String?) {
+        val nm = getSystemService(NotificationManager::class.java) ?: return
+        if (!ongoingChannelReady) {
+            val channel = NotificationChannel(ONGOING_CHANNEL, getString(R.string.ongoing_channel), NotificationManager.IMPORTANCE_LOW)
+            channel.setSound(null, null)
+            channel.enableVibration(false)
+            channel.setShowBadge(false)
+            nm.createNotificationChannel(channel)
+            ongoingChannelReady = true
+        }
+        val info = CallManager.info(call)
+        val title = contactName ?: info.displayName ?: PhoneFormat.format(info.number).ifEmpty { getString(R.string.unknown) }
+        val status = when (call.state) {
+            Call.STATE_ACTIVE -> getString(R.string.ongoing_active)
+            Call.STATE_HOLDING -> getString(R.string.ongoing_hold)
+            else -> getString(R.string.ongoing_dialing)
+        }
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val open = PendingIntent.getActivity(
+            this, 20,
+            Intent(this, InCallActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
+            flags,
+        )
+        val hangUp = PendingIntent.getBroadcast(
+            this, 21,
+            Intent(this, CallActionReceiver::class.java).setAction(CallActionReceiver.ACTION_HANGUP),
+            flags,
+        )
+        val active = call.state == Call.STATE_ACTIVE
+        val builder = Notification.Builder(this, ONGOING_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_call)
+            .setContentTitle(title)
+            .setContentText(status)
+            .setContentIntent(open)
+            .setCategory(Notification.CATEGORY_CALL)
+            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setUsesChronometer(active)
+            .setShowWhen(active)
+            .addAction(Notification.Action.Builder(null, getString(R.string.end), hangUp).build())
+        if (active) {
+            val connected = info.connectTime
+            builder.setWhen(if (connected > 0L) connected else System.currentTimeMillis())
+        }
+        nm.notify(ONGOING_ID, builder.build())
+    }
+
     fun cancelIncoming() {
         notifiedCall = null
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
@@ -318,6 +396,11 @@ class CallService : InCallService() {
     companion object {
         const val CHANNEL_ID = "incoming_calls"
         const val NOTIFICATION_ID = 4101
+        const val ONGOING_ID = 4103
+        const val ONGOING_CHANNEL = "ongoing_calls"
+
+        @Volatile
+        private var ongoingChannelReady = false
 
         @Volatile
         private var channelReady = false

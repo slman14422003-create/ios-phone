@@ -32,6 +32,9 @@ description: Progress log for the ios-phone Android project (com.iosphone.app, K
 ## 6) Answer from heads-up notification
 - Notification Answer is now a broadcast (CallActionReceiver.ACTION_ANSWER) that answers immediately without launching the activity; CallManager.openOnActive makes CallService.onStateEvent open the in-call UI once the call is ACTIVE, so the incoming screen no longer flashes.
 
+## 7) Ongoing call notification
+- CallService.syncOngoing/postOngoing: silent low-importance notification (channel ongoing_calls, id 4103) while a call is active, dialing or on hold, with chronometer, End action, and tap to return to InCallActivity. Updated on add, state change and removal; cancelled when no ongoing call. Plain Notification.Builder (not CallStyle) because the service is not a foreground service.
+
 # Notes
 - Launcher badge rendering depends on the device launcher.
 - silenceRinger cannot stop a ringtone that has not started yet, hence the retries.

@@ -249,4 +249,8 @@
     <string name="silence_unknown">Silence Unknown Callers</string>
     <string name="silence_unknown_footer">Calls from numbers that are not in your contacts are silenced and appear in Recents.</string>
     <string name="swipe_delete">Delete</string>
+    <string name="ongoing_channel">Ongoing call</string>
+    <string name="ongoing_active">Tap to return to call</string>
+    <string name="ongoing_hold">On hold · tap to return</string>
+    <string name="ongoing_dialing">Calling… tap to return</string>
 </resources>
