@@ -29,6 +29,9 @@ description: Progress log for the ios-phone Android project (com.iosphone.app, K
 ## 5) Message icon
 - All Material ChatBubble usages replaced with IosIcons.Message (in-call grid, swipe action, quick menu, keypad menu).
 
+## 6) Answer from heads-up notification
+- Notification Answer is now a broadcast (CallActionReceiver.ACTION_ANSWER) that answers immediately without launching the activity; CallManager.openOnActive makes CallService.onStateEvent open the in-call UI once the call is ACTIVE, so the incoming screen no longer flashes.
+
 # Notes
 - Launcher badge rendering depends on the device launcher.
 - silenceRinger cannot stop a ringtone that has not started yet, hence the retries.

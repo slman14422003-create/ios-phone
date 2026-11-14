@@ -7,6 +7,10 @@ import android.content.Intent
 class CallActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
+            ACTION_ANSWER -> CallManager.ringing()?.let {
+                CallManager.openOnActive = true
+                CallManager.answer(it)
+            }
             ACTION_DECLINE -> (CallManager.ringing() ?: CallManager.primary())?.let { CallManager.reject(it) }
             ACTION_HANGUP -> (CallManager.ongoing() ?: CallManager.primary())?.let { CallManager.hangup(it) }
             ACTION_MISSED_DISMISSED -> Thread { MissedCalls.clear(context) }.start()
@@ -23,6 +27,7 @@ class CallActionReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        const val ACTION_ANSWER = "com.iosphone.app.action.ANSWER_DIRECT"
         const val ACTION_DECLINE = "com.iosphone.app.action.DECLINE"
         const val ACTION_HANGUP = "com.iosphone.app.action.HANGUP"
         const val ACTION_MISSED_DISMISSED = "com.iosphone.app.action.MISSED_DISMISSED"

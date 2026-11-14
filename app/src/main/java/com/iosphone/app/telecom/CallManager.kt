@@ -30,6 +30,9 @@ object CallManager {
 
     @Volatile
     var uiVisible = false
+
+    @Volatile
+    var openOnActive = false
     private val handler = Handler(Looper.getMainLooper())
 
     private val callback = object : Call.Callback() {

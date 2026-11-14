@@ -85,6 +85,7 @@ class CallService : InCallService() {
 
     override fun onCallRemoved(call: Call) {
         CallManager.remove(call)
+        if (CallManager.calls.isEmpty()) CallManager.openOnActive = false
         if (notifiedCall === call) notifiedCall = null
         syncIncoming()
         refreshProximity()
@@ -99,6 +100,10 @@ class CallService : InCallService() {
     }
 
     fun onStateEvent(state: Int) {
+        if (state == Call.STATE_ACTIVE && CallManager.openOnActive) {
+            CallManager.openOnActive = false
+            if (!CallManager.uiVisible) openUi()
+        }
         if (state == Call.STATE_ACTIVE && AppSettings.vibrateOnAnswer) KeyFeedback.pulse(this, 70)
         if (state == Call.STATE_DISCONNECTED && AppSettings.vibrateOnEnd) KeyFeedback.pulse(this, 110)
         if (CallManager.calls.none { it.state == Call.STATE_RINGING }) stopRingExtras()
@@ -286,9 +291,9 @@ class CallService : InCallService() {
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, InCallActivity::class.java).addFlags(uiFlags), flags,
         )
-        val answer = PendingIntent.getActivity(
+        val answer = PendingIntent.getBroadcast(
             this, 1,
-            Intent(this, InCallActivity::class.java).setAction(InCallActivity.ACTION_ANSWER).addFlags(uiFlags),
+            Intent(this, CallActionReceiver::class.java).setAction(CallActionReceiver.ACTION_ANSWER),
             flags,
         )
         val decline = PendingIntent.getBroadcast(
