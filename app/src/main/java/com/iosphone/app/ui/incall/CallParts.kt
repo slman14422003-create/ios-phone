@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PersonAdd
@@ -292,7 +291,7 @@ fun CallContent(ui: CallUi, act: CallActions, look: CallLook, p: CallPalette, in
                                         onClick = act.hold,
                                     )
                                     CallControl(Icons.Filled.PersonAdd, stringResource(R.string.add_call), false, p, onClick = act.addCall)
-                                    CallControl(Icons.Filled.ChatBubble, stringResource(R.string.message), false, p, onClick = act.message)
+                                    CallControl(IosIcons.Message, stringResource(R.string.message), false, p, onClick = act.message)
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.Top) {
                                     if (ui.canMerge) {

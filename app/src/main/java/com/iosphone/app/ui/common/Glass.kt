@@ -253,6 +253,7 @@ fun GlassMenu(
     offsetY: Dp = 52.dp,
     width: Dp = 250.dp,
     positionProvider: androidx.compose.ui.window.PopupPositionProvider? = null,
+    header: String? = null,
 ) {
     DisposableEffect(expanded) {
         if (expanded) ScreenBlur.count++
@@ -280,6 +281,16 @@ fun GlassMenu(
             exit = fadeOut(tween(90)),
         ) {
             Column(Modifier.width(width).menuSurface(RoundedCornerShape(24.dp)).padding(vertical = 8.dp)) {
+                if (header != null) {
+                    BasicText(
+                        header,
+                        style = IosType.footnote.copy(color = colors.secondaryLabel, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+                    )
+                    Box(Modifier.padding(horizontal = 18.dp).fillMaxWidth().height(0.5.dp).background(colors.separator))
+                }
                 items.forEachIndexed { index, item ->
                     Row(
                         Modifier

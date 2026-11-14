@@ -88,7 +88,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import com.iosphone.app.domain.CallIntel
@@ -118,6 +117,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.iosphone.app.data.AppData
+import com.iosphone.app.telecom.SimInfo
+import com.iosphone.app.ui.common.SimMenu
+import com.iosphone.app.ui.common.simChoices
 import com.iosphone.app.telecom.MissedCalls
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -346,6 +348,11 @@ private fun CallsContent() {
         items(groups, key = { it.first.id }, contentType = { "call" }) { g ->
             val contact = data.contactFor(g.first.number)
             var menu by remember { mutableStateOf(false) }
+            var simChoice by remember { mutableStateOf<List<SimInfo>?>(null) }
+            val startCall: () -> Unit = {
+                val choices = simChoices(context)
+                if (choices != null) simChoice = choices else call(g.first.number)
+            }
             val hint = when {
                 g.first.id in unreturned -> notReturnedLabel
                 contact == null && g.first.name == null && PhoneFormat.key(g.first.number) in spamKeys -> spamLabel
@@ -359,7 +366,7 @@ private fun CallsContent() {
                     canContact = g.first.number.isNotBlank(),
                     onOpened = { openId = g.first.id },
                     onClosed = { if (openId == g.first.id) openId = -1L },
-                    onCall = { call(g.first.number) },
+                    onCall = startCall,
                     onMessage = { Messaging.open(context, g.first.number) },
                     onDelete = {
                         scope.launch {
@@ -374,7 +381,7 @@ private fun CallsContent() {
                         editing = editing,
                         hint = hint,
                         hintIsSpam = hint == spamLabel,
-                        onClick = { call(g.first.number) },
+                        onClick = startCall,
                         onLongClick = {
                             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             menu = true
@@ -391,6 +398,13 @@ private fun CallsContent() {
                         },
                     )
                 }
+                SimMenu(
+                    expanded = simChoice != null,
+                    onDismiss = { simChoice = null },
+                    sims = simChoice.orEmpty(),
+                    number = g.first.number,
+                    title = contact?.name ?: g.first.name,
+                )
                 QuickMenu(
                     expanded = menu,
                     onDismiss = { menu = false },
@@ -398,7 +412,7 @@ private fun CallsContent() {
                     number = g.first.number,
                     extra = listOf(
                         MenuItem(callActionLabel, icon = Icons.Filled.Call) { call(g.first.number) },
-                        MenuItem(messageActionLabel, icon = Icons.Filled.ChatBubble) { Messaging.open(context, g.first.number) },
+                        MenuItem(messageActionLabel, icon = IosIcons.Message) { Messaging.open(context, g.first.number) },
                     ),
                 )
             }
@@ -624,7 +638,7 @@ private fun SwipeRow(
                 if (canContact) {
                     SwipeAction(
                         label = stringResource(R.string.send_message),
-                        icon = Icons.Filled.ChatBubble,
+                        icon = IosIcons.Message,
                         color = colors.tint,
                         onClick = {
                             onMessage()

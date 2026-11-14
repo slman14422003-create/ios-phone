@@ -24,6 +24,10 @@ description: Progress log for the ios-phone Android project (com.iosphone.app, K
 
 ## 4) SIM chooser as dropdown menu
 - SimPicker.kt: SimPickerHost now renders a GlassMenu (same style and position as the filter menu) with one item per SIM instead of the bottom sheet. Tab bar stays visible while it is open (PhoneShell).
+- From CallsScreen rows (tap or swipe-call) the SIM menu is anchored under the tapped row (SimMenu + simChoices in SimPicker.kt, ClampedBelowProvider), narrower (220dp), with the contact name or number as header (GlassMenu header param). Other screens still use the top-end SimPickerHost.
+
+## 5) Message icon
+- All Material ChatBubble usages replaced with IosIcons.Message (in-call grid, swipe action, quick menu, keypad menu).
 
 # Notes
 - Launcher badge rendering depends on the device launcher.

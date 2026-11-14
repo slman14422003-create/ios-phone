@@ -43,7 +43,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -268,7 +267,7 @@ fun KeypadScreen(initialNumber: String?) {
                             val typed = raw
                             add(MenuItem(stringResource(R.string.copy_number)) { QuickCopy.number(context, typed) })
                             add(
-                                MenuItem(stringResource(R.string.send_message), icon = Icons.Filled.ChatBubble) {
+                                MenuItem(stringResource(R.string.send_message), icon = IosIcons.Message) {
                                     com.iosphone.app.telecom.Messaging.open(context, typed)
                                 },
                             )
