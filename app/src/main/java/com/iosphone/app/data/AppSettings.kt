@@ -163,8 +163,6 @@ object AppSettings {
         private set
     var keyVolume by mutableIntStateOf(70)
         private set
-        private set
-        private set
     var defaultSim by mutableStateOf("")
         private set
     var roamingAssist by mutableStateOf(true)
