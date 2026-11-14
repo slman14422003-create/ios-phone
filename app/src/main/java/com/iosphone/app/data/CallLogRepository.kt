@@ -27,6 +27,7 @@ object CallLogRepository {
                 CallLog.Calls.TYPE,
                 CallLog.Calls.DATE,
                 CallLog.Calls.DURATION,
+                CallLog.Calls.IS_READ,
             ),
             args,
             null,
@@ -40,6 +41,7 @@ object CallLogRepository {
                         type = c.getInt(3),
                         date = c.getLong(4),
                         duration = c.getLong(5),
+                        isRead = c.isNull(6) || c.getInt(6) != 0,
                     ),
                 )
             }

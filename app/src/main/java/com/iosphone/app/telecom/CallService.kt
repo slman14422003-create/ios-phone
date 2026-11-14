@@ -8,7 +8,13 @@ import android.app.Person
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
+import android.content.ContentResolver
+import android.content.pm.PackageManager
+import android.os.Bundle
 import android.net.Uri
+import android.provider.CallLog
+import android.telecom.TelecomManager
+import android.telephony.TelephonyManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioDeviceInfo
@@ -35,6 +41,7 @@ class CallService : InCallService() {
     private var torchId: String? = null
     private var autoAnswer: Runnable? = null
     private var notifiedCall: Call? = null
+    private val silenceToken = Any()
     private val blink = object : Runnable {
         override fun run() {
             torchOn = !torchOn
@@ -51,6 +58,7 @@ class CallService : InCallService() {
     }
 
     override fun onDestroy() {
+        main.removeCallbacksAndMessages(silenceToken)
         stopRingExtras()
         io?.shutdownNow()
         io = null
@@ -69,7 +77,7 @@ class CallService : InCallService() {
         CallManager.add(call)
         if (call.state == Call.STATE_RINGING) {
             showIncoming(call)
-            startRingExtras(call)
+            handleRinging(call)
         } else {
             openUi()
         }
@@ -104,6 +112,72 @@ class CallService : InCallService() {
         } else if (next !== notifiedCall) {
             showIncoming(next)
         }
+    }
+
+    private fun handleRinging(call: Call) {
+        val number = CallManager.info(call).number
+        val worker = io
+        val eligible = AppSettings.silenceUnknown &&
+            worker != null &&
+            checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
+            checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
+            !isEmergency(call, number)
+        if (!eligible || worker == null) {
+            startRingExtras(call)
+            return
+        }
+        worker.execute {
+            val unknown = runCatching { isUnknownCaller(number) }.getOrDefault(false)
+            main.post {
+                if (call.state != Call.STATE_RINGING) return@post
+                if (unknown) silence(call) else startRingExtras(call)
+            }
+        }
+    }
+
+    private fun isEmergency(call: Call, number: String): Boolean {
+        val d = call.details
+        if (d != null && (d.hasProperty(Call.Details.PROPERTY_EMERGENCY_CALLBACK_MODE) ||
+                d.hasProperty(Call.Details.PROPERTY_NETWORK_IDENTIFIED_EMERGENCY_CALL))
+        ) return true
+        if (number.isEmpty()) return false
+        val platform = runCatching { getSystemService(TelephonyManager::class.java).isEmergencyNumber(number) }.getOrDefault(false)
+        return platform || runCatching { android.telephony.PhoneNumberUtils.isEmergencyNumber(number) }.getOrDefault(false)
+    }
+
+    private fun isUnknownCaller(number: String): Boolean {
+        if (number.isEmpty()) return true
+        if (ContactLookup.find(this, number).name != null) return false
+        return !calledBefore(number)
+    }
+
+    private fun calledBefore(number: String): Boolean {
+        val key = PhoneFormat.key(number)
+        if (key.isEmpty()) return false
+        val args = Bundle().apply {
+            putString(ContentResolver.QUERY_ARG_SQL_SELECTION, CallLog.Calls.TYPE + "=?")
+            putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf(CallLog.Calls.OUTGOING_TYPE.toString()))
+            putInt(ContentResolver.QUERY_ARG_LIMIT, 1000)
+            putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(CallLog.Calls.DATE))
+            putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION, ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
+        }
+        contentResolver.query(CallLog.Calls.CONTENT_URI, arrayOf(CallLog.Calls.NUMBER), args, null)?.use { c ->
+            while (c.moveToNext()) {
+                if (PhoneFormat.key(c.getString(0).orEmpty()) == key) return true
+            }
+        }
+        return false
+    }
+
+    private fun silence(call: Call) {
+        stopRingExtras()
+        val tm = getSystemService(TelecomManager::class.java) ?: return
+        val attempt = Runnable {
+            if (call.state == Call.STATE_RINGING) runCatching { tm.silenceRinger() }
+        }
+        attempt.run()
+        main.postDelayed(attempt, silenceToken, 350L)
+        main.postDelayed(attempt, silenceToken, 1000L)
     }
 
     private fun setTorch(on: Boolean) {

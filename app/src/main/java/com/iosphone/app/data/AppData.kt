@@ -42,6 +42,8 @@ class AppData {
         private set
     var loaded by mutableStateOf(false)
         private set
+    val missedUnread: Int
+        get() = calls.count { it.isUnreadMissed }
     var version by mutableIntStateOf(0)
         private set
     var callsVersion by mutableIntStateOf(0)

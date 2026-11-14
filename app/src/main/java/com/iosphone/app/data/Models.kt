@@ -28,7 +28,10 @@ data class CallEntry(
     val type: Int,
     val date: Long,
     val duration: Long,
+    val isRead: Boolean = true,
 ) {
+    val isUnreadMissed: Boolean
+        get() = type == CallLog.Calls.MISSED_TYPE && !isRead
     val isMissed: Boolean
         get() = type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE
     val isOutgoing: Boolean

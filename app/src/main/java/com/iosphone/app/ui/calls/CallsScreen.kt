@@ -94,6 +94,34 @@ import androidx.compose.ui.unit.IntOffset
 import com.iosphone.app.domain.CallIntel
 import com.iosphone.app.telecom.Messaging
 import com.iosphone.app.ui.common.QuickMenu
+import androidx.compose.animation.core.animate
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.iosphone.app.data.AppData
+import com.iosphone.app.telecom.MissedCalls
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 
 private class CallGroup(val first: CallEntry, val ids: List<Long>) {
     val count: Int get() = ids.size
@@ -143,6 +171,18 @@ private fun CallsContent() {
         }
     }
     var menu by remember { mutableStateOf(false) }
+    var openId by remember { mutableLongStateOf(-1L) }
+    val listState = rememberLazyListState()
+    LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) openId = -1L }
+    LaunchedEffect(editing, filter) { openId = -1L }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val unreadMissed = data.missedUnread
+    LaunchedEffect(filter, unreadMissed, data.resumeCount) {
+        if (filter == 1 && unreadMissed > 0 && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            withContext(Dispatchers.IO) { MissedCalls.clear(context) }
+            AppData.shared.invalidateCalls()
+        }
+    }
     val groups = remember(data.calls, filter) {
         group(
             data.calls.filter {
@@ -193,6 +233,7 @@ private fun CallsContent() {
 
     LazyColumn(
         Modifier.fillMaxSize().background(colors.background),
+        state = listState,
         contentPadding = PaddingValues(bottom = 140.dp),
     ) {
         item(key = "bar") {
@@ -311,28 +352,45 @@ private fun CallsContent() {
                 else -> null
             }
             Box(Modifier.animateItem(placementSpec = rowPlacement)) {
-                CallRow(
-                    g = g,
-                    contact = contact,
-                    editing = editing,
-                    hint = hint,
-                    hintIsSpam = hint == spamLabel,
-                    onClick = { call(g.first.number) },
-                    onLongClick = {
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        menu = true
-                    },
-                    onInfo = {
-                        if (contact != null) ContactsLink.openContact(context, contact.id)
-                        else nav.push(Route.CallInfo(g.first.number))
-                    },
+                SwipeRow(
+                    rowKey = g.first.id,
+                    openKey = openId,
+                    enabled = !editing,
+                    canContact = g.first.number.isNotBlank(),
+                    onOpened = { openId = g.first.id },
+                    onClosed = { if (openId == g.first.id) openId = -1L },
+                    onCall = { call(g.first.number) },
+                    onMessage = { Messaging.open(context, g.first.number) },
                     onDelete = {
                         scope.launch {
                             CallLogRepository.delete(context, g.ids)
-                            data.invalidate()
+                            AppData.shared.invalidateCalls()
                         }
                     },
-                )
+                ) {
+                    CallRow(
+                        g = g,
+                        contact = contact,
+                        editing = editing,
+                        hint = hint,
+                        hintIsSpam = hint == spamLabel,
+                        onClick = { call(g.first.number) },
+                        onLongClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            menu = true
+                        },
+                        onInfo = {
+                            if (contact != null) ContactsLink.openContact(context, contact.id)
+                            else nav.push(Route.CallInfo(g.first.number))
+                        },
+                        onDelete = {
+                            scope.launch {
+                                CallLogRepository.delete(context, g.ids)
+                                data.invalidate()
+                            }
+                        },
+                    )
+                }
                 QuickMenu(
                     expanded = menu,
                     onDismiss = { menu = false },
@@ -436,5 +494,198 @@ private fun CallRow(
             )
         }
         Hairline(if (editing) 52.dp else 16.dp)
+    }
+}
+
+private enum class SwipeZone { Closed, Open, Call }
+
+@Composable
+private fun SwipeRow(
+    rowKey: Long,
+    openKey: Long,
+    enabled: Boolean,
+    canContact: Boolean,
+    onOpened: () -> Unit,
+    onClosed: () -> Unit,
+    onCall: () -> Unit,
+    onMessage: () -> Unit,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val colors = Ios.colors
+    val view = LocalView.current
+    val scope = rememberCoroutineScope()
+    val sign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
+    var x by remember { mutableFloatStateOf(0f) }
+    var rowWidth by remember { mutableFloatStateOf(0f) }
+    var settleJob by remember { mutableStateOf<Job?>(null) }
+    val density = LocalDensity.current
+    val buttonWidthPx = with(density) { 80.dp.toPx() }
+    val actionsWidthPx = if (canContact) buttonWidthPx * 2f else buttonWidthPx
+    val callThresholdPx = maxOf(with(density) { 110.dp.toPx() }, rowWidth * 0.32f)
+    val openThresholdPx = actionsWidthPx * 0.35f
+    val currentOnOpened by rememberUpdatedState(onOpened)
+    val currentOnClosed by rememberUpdatedState(onClosed)
+    val currentOnCall by rememberUpdatedState(onCall)
+    val spec = remember { spring<Float>(dampingRatio = 0.8f, stiffness = 420f) }
+
+    fun settleTo(target: Float) {
+        settleJob?.cancel()
+        settleJob = scope.launch { animate(x, target, animationSpec = spec) { v, _ -> x = v } }
+    }
+
+    fun zone(v: Float): SwipeZone = when {
+        v >= callThresholdPx -> SwipeZone.Call
+        v <= -openThresholdPx -> SwipeZone.Open
+        else -> SwipeZone.Closed
+    }
+
+    LaunchedEffect(openKey, enabled) {
+        if ((openKey != rowKey || !enabled) && x != 0f) settleTo(0f)
+    }
+
+    val isOpen by remember(openKey, rowKey) { derivedStateOf { x < -1f && openKey == rowKey } }
+
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clipToBounds()
+            .onSizeChanged { rowWidth = it.width.toFloat() }
+            .pointerInput(enabled, canContact, actionsWidthPx, callThresholdPx, sign) {
+                if (!enabled) return@pointerInput
+                detectHorizontalDragGestures(
+                    onDragStart = { settleJob?.cancel() },
+                    onDragEnd = {
+                        when (zone(x)) {
+                            SwipeZone.Call -> {
+                                currentOnCall()
+                                settleTo(0f)
+                                currentOnClosed()
+                            }
+                            SwipeZone.Open -> {
+                                settleTo(-actionsWidthPx)
+                                currentOnOpened()
+                            }
+                            SwipeZone.Closed -> {
+                                settleTo(0f)
+                                currentOnClosed()
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        settleTo(0f)
+                        currentOnClosed()
+                    },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        val before = x
+                        val maxRight = if (canContact) rowWidth * 0.6f else 0f
+                        val minLeft = -(actionsWidthPx * 1.2f)
+                        val next = (x + dx * sign).coerceIn(minLeft, maxRight)
+                        x = next
+                        if (zone(before) != zone(next)) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    },
+                )
+            },
+    ) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .drawBehind {
+                    if (x > 0f) {
+                        val w = x.coerceAtMost(size.width)
+                        val left = if (sign < 0f) size.width - w else 0f
+                        drawRect(colors.green, topLeft = Offset(left, 0f), size = Size(w, size.height))
+                    }
+                },
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .width(72.dp)
+                    .graphicsLayer {
+                        val progress = (x / callThresholdPx).coerceIn(0f, 1f)
+                        alpha = if (x > 0f) progress else 0f
+                        val s = 0.6f + 0.4f * progress
+                        scaleX = s
+                        scaleY = s
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(Icons.Filled.Call, null, Modifier.size(26.dp), colorFilter = ColorFilter.tint(Color.White))
+            }
+            Row(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .graphicsLayer { alpha = if (x < 0f) 1f else 0f },
+            ) {
+                if (canContact) {
+                    SwipeAction(
+                        label = stringResource(R.string.send_message),
+                        icon = Icons.Filled.ChatBubble,
+                        color = colors.tint,
+                        onClick = {
+                            onMessage()
+                            settleTo(0f)
+                            currentOnClosed()
+                        },
+                    )
+                }
+                SwipeAction(
+                    label = stringResource(R.string.swipe_delete),
+                    icon = Icons.Filled.Delete,
+                    color = colors.red,
+                    onClick = {
+                        onDelete()
+                        settleTo(0f)
+                        currentOnClosed()
+                    },
+                )
+            }
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = x * sign }
+                .background(colors.background),
+        ) {
+            content()
+            if (isOpen) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                settleTo(0f)
+                                currentOnClosed()
+                            }
+                        },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwipeAction(label: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .width(80.dp)
+            .fillMaxHeight()
+            .background(color)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Color.White))
+        Spacer(Modifier.height(4.dp))
+        BasicText(
+            label,
+            style = IosType.footnote.copy(color = Color.White, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

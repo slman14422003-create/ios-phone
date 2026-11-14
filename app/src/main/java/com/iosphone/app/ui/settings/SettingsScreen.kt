@@ -182,6 +182,15 @@ fun SettingsScreen() {
                 Hairline(0.dp)
                 NavRow(stringResource(R.string.other_call_settings)) { nav.push(Route.OtherCalls) }
             }
+            Spacer(Modifier.height(12.dp))
+            Card {
+                ToggleRow(stringResource(R.string.silence_unknown), AppSettings.silenceUnknown) { AppSettings.changeSilenceUnknown(it) }
+            }
+            BasicText(
+                stringResource(R.string.silence_unknown_footer),
+                style = IosType.footnote.copy(color = colors.secondaryLabel),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp),
+            )
 
             SectionHeader(stringResource(R.string.keypad_section))
             Card {

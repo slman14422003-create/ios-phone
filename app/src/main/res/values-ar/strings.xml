@@ -233,4 +233,7 @@
     <string name="missed_channel">المكالمات الفائتة</string>
     <string name="missed_one">مكالمة فائتة</string>
     <string name="missed_many">%d مكالمات فائتة</string>
+    <string name="silence_unknown">كتم المتصلين المجهولين</string>
+    <string name="silence_unknown_footer">المكالمات من أرقام ليست في جهات الاتصال تُكتم وتظهر في السجل</string>
+    <string name="swipe_delete">حذف</string>
 </resources>

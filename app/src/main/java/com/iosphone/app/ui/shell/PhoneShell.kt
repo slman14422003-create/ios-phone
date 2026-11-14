@@ -23,7 +23,6 @@ import com.iosphone.app.ui.common.Motion
 import com.iosphone.app.ui.common.ScreenBlur
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import com.iosphone.app.ui.common.SimPicker
 import com.iosphone.app.ui.common.EdgeScrims
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -53,6 +52,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -88,6 +88,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.iosphone.app.R
 import com.iosphone.app.data.rememberAppData
+import com.iosphone.app.data.AppData
+import java.text.NumberFormat
 import com.iosphone.app.data.LocalAppData
 import com.iosphone.app.ui.calls.CallsScreen
 import com.iosphone.app.ui.common.GlassIconButton
@@ -178,7 +180,7 @@ fun PhoneContent(vm: ShellViewModel, dialNumber: String?) {
 fun PhoneChrome(vm: ShellViewModel) {
     val context = LocalContext.current
     AnimatedVisibility(
-        visible = vm.nav.stack.isEmpty() && SimPicker.number == null,
+        visible = vm.nav.stack.isEmpty(),
         enter = fadeIn(tween(220)) + slideInVertically(tween(300, easing = IosEase)) { it / 2 },
         exit = fadeOut(tween(140)) + slideOutVertically(tween(240, easing = IosEase)) { it / 2 },
     ) {
@@ -246,6 +248,7 @@ private fun TabPill(selected: Int, onSelect: (Int) -> Unit, onExternal: (Int) ->
     val currentSelected by rememberUpdatedState(selected)
     val currentOnSelect by rememberUpdatedState(onSelect)
     val currentOnExternal by rememberUpdatedState(onExternal)
+    val unread by remember { derivedStateOf { AppData.shared.missedUnread } }
 
     LaunchedEffect(selected, tabPx) {
         if (!dragging && tabPx > 0f) {
@@ -350,15 +353,35 @@ private fun TabPill(selected: Int, onSelect: (Int) -> Unit, onExternal: (Int) ->
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Image(
-                        spec.icon,
-                        null,
-                        Modifier.size(24.dp).graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        },
-                        colorFilter = ColorFilter.tint(tint),
-                    )
+                    Box(Modifier.size(24.dp)) {
+                        Image(
+                            spec.icon,
+                            null,
+                            Modifier.size(24.dp).graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            },
+                            colorFilter = ColorFilter.tint(tint),
+                        )
+                        if (index == 0 && unread > 0) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 12.dp, y = (-7).dp)
+                                    .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.red)
+                                    .padding(horizontal = 5.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                BasicText(
+                                    if (unread > 99) "99+" else NumberFormat.getInstance().format(unread),
+                                    style = IosType.tabLabel.copy(color = Color.White),
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
                     BasicText(stringResource(spec.label), style = IosType.tabLabel.copy(color = tint))
                 }
             }

@@ -177,6 +177,8 @@ object AppSettings {
         private set
     var incomingDisplay by mutableIntStateOf(0)
         private set
+    var silenceUnknown by mutableStateOf(false)
+        private set
     var quickReplies by mutableStateOf<List<String>?>(null)
         private set
     var speedDial by mutableStateOf<Map<Int, SpeedEntry>>(emptyMap())
@@ -201,6 +203,7 @@ object AppSettings {
         vibrateOnEnd = p.getBoolean("vibrate_end", false)
         flashOnRing = p.getBoolean("flash_ring", false)
         incomingDisplay = p.getInt("incoming_display", 0).coerceIn(0, 1)
+        silenceUnknown = p.getBoolean("silence_unknown", false)
         quickReplies = p.getString("quick_replies", null)?.split('\u001F')?.filter { it.isNotBlank() }
         val speed = HashMap<Int, SpeedEntry>()
         for (n in 2..9) {
@@ -280,6 +283,11 @@ object AppSettings {
     fun changeIncomingDisplay(value: Int) {
         incomingDisplay = value.coerceIn(0, 1)
         edit { putInt("incoming_display", incomingDisplay) }
+    }
+
+    fun changeSilenceUnknown(value: Boolean) {
+        silenceUnknown = value
+        edit { putBoolean("silence_unknown", value) }
     }
 
     fun changeQuickReplies(value: List<String>?) {

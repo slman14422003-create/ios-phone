@@ -80,13 +80,6 @@ class MainActivity : ComponentActivity() {
         setContentView(root)
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Opening the app counts as seeing the missed calls.
-        val app = applicationContext
-        Thread { com.iosphone.app.telecom.MissedCalls.clear(app) }.start()
-    }
-
     override fun onStop() {
         vm.nav.returnOnEmpty = false
         super.onStop()

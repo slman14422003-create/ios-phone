@@ -246,4 +246,7 @@
     <string name="missed_channel">Missed calls</string>
     <string name="missed_one">Missed call</string>
     <string name="missed_many">%d missed calls</string>
+    <string name="silence_unknown">Silence Unknown Callers</string>
+    <string name="silence_unknown_footer">Calls from numbers that are not in your contacts are silenced and appear in Recents.</string>
+    <string name="swipe_delete">Delete</string>
 </resources>

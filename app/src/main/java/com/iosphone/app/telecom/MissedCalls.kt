@@ -63,7 +63,9 @@ object MissedCalls {
         val name = unread?.cachedName
             ?: runCatching { ContactLookup.find(app, number).name }.getOrNull()
             ?: PhoneFormat.format(number).ifEmpty { app.getString(R.string.unknown) }
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, app.getString(R.string.missed_channel), NotificationManager.IMPORTANCE_HIGH))
+        val channel = NotificationChannel(CHANNEL, app.getString(R.string.missed_channel), NotificationManager.IMPORTANCE_HIGH)
+        channel.setShowBadge(true)
+        nm.createNotificationChannel(channel)
 
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val open = PendingIntent.getActivity(
@@ -89,6 +91,8 @@ object MissedCalls {
             .setAutoCancel(true)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setShowWhen(true)
+            .setNumber(count)
+            .setBadgeIconType(Notification.BADGE_ICON_SMALL)
         if (number.isNotBlank()) {
             val callBack = PendingIntent.getBroadcast(
                 app, 12,
